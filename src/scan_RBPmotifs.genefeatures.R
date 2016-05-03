@@ -110,7 +110,6 @@ countMotifHits <- function (PWMs, features, genomeVersion) {
 }
 
 
-
 calculateEnrichedMotifs <- function (features, geneIds, genomeVersion, PWMs) {
   ##Get foreground and background features
   reducedFeatures <- GenomicRanges::reduce(GenomicRanges::split(x=features, f = features$gene_id))
@@ -144,7 +143,8 @@ calculateEnrichedMotifs <- function (features, geneIds, genomeVersion, PWMs) {
                         'fgFraction' = round(fgHits/fgSize,2),
                         'bgHits' = bgHits,
                         'bgFraction' = round(bgHits/bgSize,2),
-                        'pValue' = pvals)
+                        'pValue' = pvals,
+                        'p.adjust' = p.adjust(pvals, method = 'BH'))
   return(results[order(results$pValue),])
 }
 
