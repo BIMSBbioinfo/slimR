@@ -72,9 +72,12 @@ if(!genomeVersion %in% c('hg19', 'ce6', 'mm9', 'dm3')){
 
 # load libraries
 library('RCAS')
-data(gff)
-gtf <- gff
-#gtf <- RCAS::importGtf(filePath = gtfFile)
+library('foreach')
+library('doParallel')
+cl <- makeCluster(8)
+registerDoParallel(cl)
+#data(gff)
+#gtf <- gff
 
 parseMotifPWMs <- function (motifsPath) {
   files <- list.files(path = motifsPath, pattern = '.txt$', full.names = T)
@@ -97,39 +100,29 @@ countMotifHits <- function (PWMs, features, genomeVersion) {
   cat('extracting sequences\n')
   Seqs <- RCAS::extractSequences(queryRegions = features, genomeVersion = genomeVersion)
 
-  pwmHits <- c()
-  for (i in 1:length(PWMs)) {
-    tmm <- PWMs[[i]]
+  cat('scanning the motifs in parallel\n')
+  pwmHits <- foreach(i=1:length(PWMs), .combine=rbind) %dopar% {
     motif <- names(PWMs)[i]
-    cat('scanning for motif',motif)
-    nhits <- sum(lengths(lapply(X=Seqs, FUN = function(x) {Biostrings::matchPWM(pwm = tmm, subject = x)})) > 0)
-    cat('=> found ',nhits,'hits\n')
-    pwmHits <- c(pwmHits, nhits)
+    tmm <- PWMs[[i]]
+    nhits <- sum(lengths(lapply(X=Seqs, FUN = function(x) {Biostrings::matchPWM(pwm = tmm, subject = x, min.score = '95%')})) > 0)
   }
-  return (pwmHits)
+  return (as.vector(pwmHits))
 }
 
-txdbFeatures <- RCAS::getTxdbFeaturesFromGff(gff = gtf)
 
-#Assign gene ids to the transcripts in the txdbFeatures
-ids <- lapply(X = txdbFeatures, function(x) { m = match(x$tx_name, gtf$transcript_id); gtf[m,]$gene_id})
-for(i in 1:length(names(txdbFeatures))) {
-  txdbFeatures[[i]]$gene_id <- ids[[i]]
-}
-##
-
-##Get PWMs from files
-PWMs <- parseMotifPWMs(motifsPath = knownMotifsDir)
 
 calculateEnrichedMotifs <- function (features, geneIds, genomeVersion, PWMs) {
   ##Get foreground and background features
   reducedFeatures <- GenomicRanges::reduce(GenomicRanges::split(x=features, f = features$gene_id))
   foregroundFeatures <- unlist(reducedFeatures[names(reducedFeatures) %in% geneIds])
   allGenes <- names(reducedFeatures)
-  backgroundGenes <- sample(allGenes[!allGenes %in% geneIds], 100)
+  backgroundGenes <- sample(allGenes[!allGenes %in% geneIds], 1000)
   backgroundFeatures <- unlist(reducedFeatures[names(reducedFeatures) %in% backgroundGenes])
 
+  cat('Looking for motif hits in foreground sequences\n')
   fgHits <- countMotifHits(PWMs = PWMs, features = foregroundFeatures, genomeVersion = genomeVersion)
+
+  cat('Looking for motif hits in background sequences\n')
   bgHits <- countMotifHits(PWMs = PWMs, features = backgroundFeatures, genomeVersion = genomeVersion)
 
   fgSize <- length(foregroundFeatures)
@@ -155,22 +148,48 @@ calculateEnrichedMotifs <- function (features, geneIds, genomeVersion, PWMs) {
   return(results[order(results$pValue),])
 }
 
+cat('Reading genome annotations from gtf file\n')
+#get genome annotations
+gtf <- RCAS::importGtf(filePath = gtfFile)
+
+cat('Extracting txdb features from the gtf file\n')
+#find all gene features' genomic coordinates
+txdbFeatures <- RCAS::getTxdbFeaturesFromGff(gff = gtf)
+#Assign gene ids to the transcripts in the txdbFeatures
+ids <- lapply(X = txdbFeatures, function(x) { m = match(x$tx_name, gtf$transcript_id); gtf[m,]$gene_id})
+for(i in 1:length(names(txdbFeatures))) {
+  txdbFeatures[[i]]$gene_id <- ids[[i]]
+}
+##
+
+cat('Parsing PWM data from',knownMotifsDir,'\n')
+
+##Get PWMs from files
+PWMs <- parseMotifPWMs(motifsPath = knownMotifsDir)
+
+#Find known motifs enriched in 3'UTRs
+cat('Analysing motifs in 3UTRs\n')
 results <- calculateEnrichedMotifs(features = txdbFeatures$threeUTRs,
                                    geneIds = scan(file = geneIdsFile,
                                                   what = character()),
                                    genomeVersion = genomeVersion, PWMs = PWMs
                                    )
-outFile <- paste0(gsub(pattern = '.txt', replacement = '', basename(geneIdsFile)), '.motifscanresults.threeUTRs.tsv')
 
+outFile <- paste0(gsub(pattern = '.txt', replacement = '', basename(geneIdsFile)), '.motifscanresults.threeUTRs.tsv')
+cat('Writing 3UTR analysis results into',outFile,'\n\n')
 write.table(x = results, file = outFile, quote = FALSE, row.names = FALSE, sep = '\t')
 
+#Find known motifs enriched in 5'UTRs
+cat('Analysing motifs in 5UTRs\n')
 results <- calculateEnrichedMotifs(features = txdbFeatures$fiveUTRs,
                                    geneIds = scan(file = geneIdsFile,
                                                   what = character()),
                                    genomeVersion = genomeVersion,
                                    PWMs = PWMs)
-outFile <- paste0(gsub(pattern = '.txt', replacement = '', basename(geneIdsFile)), '.motifscanresults.fiveUTRs.tsv')
 
+
+outFile <- paste0(gsub(pattern = '.txt', replacement = '', basename(geneIdsFile)), '.motifscanresults.fiveUTRs.tsv')
+cat('Writing 5UTR analysis results into',outFile,'\n\n')
 write.table(x = results, file = outFile, quote = FALSE, row.names = FALSE, sep = '\t')
 
 
