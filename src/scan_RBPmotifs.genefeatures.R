@@ -6,7 +6,7 @@
 args <- commandArgs(TRUE)
 
 ## Default setting when no arguments passed
-if(length(args) < 3) {
+if(length(args) < 4) {
   args <- c("--help")
 }
 
@@ -137,12 +137,15 @@ calculateEnrichedMotifs <- function (features, geneIds, genomeVersion, PWMs) {
     p  <- stats::fisher.test(contingencyTable, alternative = "greater")$p.value
     pvals <- c(pvals, p)
   }
-
+  fgFraction <- round(fgHits/fgSize,2)
+  bgFraction <- round(bgHits/bgSize,2)
+  foldChange <- round(fgFraction / bgFraction, 2)
   results <- data.frame('motifs' = names(PWMs),
                         'fgHits' = fgHits,
-                        'fgFraction' = round(fgHits/fgSize,2),
+                        'fgFraction' = fgFraction,
                         'bgHits' = bgHits,
-                        'bgFraction' = round(bgHits/bgSize,2),
+                        'bgFraction' = bgFraction,
+                        'foldChange' = foldChange,
                         'pValue' = pvals,
                         'p.adjust' = p.adjust(pvals, method = 'BH'))
   return(results[order(results$pValue),])
