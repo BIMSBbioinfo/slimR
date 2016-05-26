@@ -94,13 +94,6 @@ printHitsTable <- function (features, seqs, motifRegex, outFileBase) {
 calculateEnrichedMotifs <- function (motifRegex, features, geneIdsFile, genomeVersion) {
 
   outFileBase <- gsub(pattern = '.txt', replacement = '', x = basename(geneIdsFile))
-  geneIds <- scan(geneIdsFile, what = character())
-  ##Get foreground and background features
-  reducedFeatures <- GenomicRanges::reduce(GenomicRanges::split(x=features, f = features$gene_id))
-  foregroundFeatures <- unlist(reducedFeatures[names(reducedFeatures) %in% geneIds])
-  allGenes <- names(reducedFeatures)
-  backgroundGenes <- sample(allGenes[!allGenes %in% geneIds], 1000)
-  backgroundFeatures <- unlist(reducedFeatures[names(reducedFeatures) %in% backgroundGenes])
 
   fgSeqs <- RCAS::extractSequences(queryRegions = foregroundFeatures, genomeVersion = genomeVersion)
   names(fgSeqs) <- names(foregroundFeatures)
@@ -201,10 +194,26 @@ motifRegex <- read.table(motifRegexFile, header=T, sep='\t', stringsAsFactors = 
 
 for (geneIdsFile in list.files(path = geneIdsDir, pattern = '.txt$', full.names = TRUE)) {
   cat('Analysing ',geneIdsFile,'\n')
-#Find known motifs enriched in 3'UTRs
-  #cat('Analysing motifs in 3UTRs\n')
+  geneIds <- scan(geneIdsFile, what = character())
+  ##Get foreground and background features
+  foregroundFeatures <- features[features$gene_id %in% geneIds]
+  allGenes <- names(reducedFeatures)
+  backgroundGenes <- sample(allGenes[!allGenes %in% geneIds], 1000)
+  backgroundFeatures <- unlist(reducedFeatures[names(reducedFeatures) %in% backgroundGenes])
+  
   calculateEnrichedMotifs(features = txdbFeatures$threeUTRs,
                        geneIdsFile = geneIdsFile,
                      genomeVersion = genomeVersion, 
                         motifRegex = motifRegex)
 }
+
+getmeanseq <- function (myfiles) {
+  meanLengths <- c()
+  for (f in myfiles) {
+    seqs <- Biostrings::readDNAStringSet(f)
+    avg <- mean(width(seqs))
+    meanLengths <- c(meanLengths, avg)
+  }
+  data.frame('mean' = meanLengths, 'file' = myfiles)
+}
+
