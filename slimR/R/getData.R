@@ -1,3 +1,19 @@
+#' parseMutation
+#'
+#' Given a vector of mutation substitutions (e.g. "p.His160Arg")
+#' -> split "p.His160Arg" into "H 160 R"
+parseMutation <- function (mutations) {
+  data(aaTable)
+  mutations <- gsub(pattern = '^p.', replacement = '', x = mutations)
+  pos <- stringr::str_match(pattern = '\\d+', string = mutations)
+  df <- data.frame(do.call(rbind, stringr::str_split(pattern = '\\d+', string = mutations)))
+  df$pos <- pos
+  colnames(df) <- c('wtAA', 'mutAA', 'pos')
+  df$wtAA <- aaTable$oneLetterCode[match(df$wtAA, aaTable$threeLetterCode)]
+  df$mutAA <- aaTable$oneLetterCode[match(df$mutAA, aaTable$threeLetterCode)]
+  return(df)
+}
+
 #' getHumSavar
 #'
 #' Download and parse protein mutation data from UniProt
@@ -21,9 +37,15 @@ getHumSavar <- function () {
             stringr::str_split(string = mut,
                                n = 7,
                                pattern = '\\s+')))
+
   colnames(mut) <- c('geneName', 'uniprotAcc',
                      'FTId', 'change',
                      'variant', 'dbSNP', 'diseaseName')
+
+  parsedMut <- parseMutation(mutations = mut$change)
+
+  mut <- cbind(mut, parsedMut)
+
   return(mut)
 }
 
