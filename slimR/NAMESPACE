@@ -3,3 +3,4 @@
 export(getElmClasses)
 export(getElmInstances)
 export(getHumSavar)
+export(searchSLiMs)
