@@ -7,15 +7,13 @@
 #' @param motifRegex A list object where names of the list are ELM identifiers
 #'  and each list item has one ELM regex
 #' @examples
-#' download.file(url = 'www.uniprot.org/uniprot/P11166.fasta',
-#'          destfile = file.path(getwd(), 'sample.fasta'))
-#' sequence <- Biostrings::readAAStringSet(filepath = file.path(getwd(), 'sample.fasta'))
-#' elms <- getElmClasses()
-#' motifRegex <- as.list(as.vector(elms$RegEx))
-#' names(motifRegex) <- as.vector(elms$ELM_Identifier)
-#'
-#' searchSLiMs(sequence, motifRegex)
-#'
+#' data(sampleFasta)
+#' motifRegex <- list('TRG_ENDOCYTIC_2' = 'Y..[LMVIF]')
+#' #or
+#' #motifRegex <- as.list(as.vector(elms$RegEx))
+#' #names(motifRegex) <- as.vector(elms$ELM_Identifier)
+#' searchSLiMs(sampleFasta, motifRegex)
+#' @return A list of data.frame objects.
 #' @export
 searchSLiMs <- function (sequence, motifRegex) {
   hits <- lapply(X = motifRegex,
@@ -31,5 +29,6 @@ searchSLiMs <- function (sequence, motifRegex) {
   #return(hitsDF)
   return(hits)
 }
+
 
 
