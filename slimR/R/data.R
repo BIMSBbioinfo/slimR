@@ -15,3 +15,11 @@
 #' @source Downloaded from uniprot \url{www.uniprot.org/uniprot/P11166.fasta}
 #' @format data.frame object with 22 rows and two columns
 "sampleFasta"
+
+#' GLUT1 disease variants
+#'
+#' Table of disease associated substitutions parsed from Humsavar (UniProt)
+#' @return A data.frame object
+#' @source GLUT1 protein \url{www.uniprot.org/uniprot/P11166}
+#' and humsavar \url{www.uniprot.org/docs/humsavar.txt}
+"sampleVariants"
