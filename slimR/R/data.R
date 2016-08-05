@@ -7,22 +7,21 @@
 "aaTable"
 
 
-#' Sample sequence extracted from a fasta file
+#' GLUT1 protein fasta sequence
 #'
 #' The amino acid sequence for P11166 protein (GLUT1)
 #'
-#' @return A data.frame object
+#' @return A AAStringSet object
 #' @source Downloaded from uniprot \url{www.uniprot.org/uniprot/P11166.fasta}
-#' @format data.frame object with 22 rows and two columns
-"sampleFasta"
+"glutFasta"
 
-#' GLUT1 disease variants
+#' GLUT1 disease mutations from uniprot
 #'
 #' Table of disease associated substitutions parsed from Humsavar (UniProt)
 #' @return A data.frame object
 #' @source GLUT1 protein \url{www.uniprot.org/uniprot/P11166}
 #' and humsavar \url{www.uniprot.org/docs/humsavar.txt}
-"sampleVariants"
+"glutMutations"
 
 #' SLiM regular expressions from ELM database
 #'
