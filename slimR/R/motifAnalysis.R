@@ -60,16 +60,16 @@ mutateSequence <- function (sequence, pos, wtAA, mutAA) {
 }
 
 
-#' findMotifKnockIns
+#' findMotifChanges
 #'
-#' Find out which SLiMs are created de novo via point amino acid substitutions
-#' in protein sequences
+#' Find out which SLiMs are gained or lost (no longer matching the regex
+#' pattern) via point amino acid substitutions in protein sequences
 #'
 #' @param sequence A character string of amino acid sequence
 #' @param variants A data.frame consisting of minimum three columns: 1.wtAA,
 #'   2.mutAA, 3.pos where pos is the mutation position in the sequence, wtAA is
-#'   the wild-type amino acid in the sequence and mutAA is the mutant amino
-#'   acid.
+#'   the wild-type amino acid (one letter code) in the sequence and mutAA is the
+#'   mutant amino acid (one letter code).
 #' @export
 findMotifChanges <- function(sequence, variants, motifRegex) {
 
@@ -77,31 +77,37 @@ findMotifChanges <- function(sequence, variants, motifRegex) {
   wtMotifs <- searchSLiMs(sequence = sequence, motifRegex = motifRegex)
   #for each variant find the list of motif hits that would be gained/lost
   #if the sequence had that substitution mutation
-  for (i in 1:length(variants)) {
+
+  lostMotifs <- list()
+  gainedMotifs <- list()
+
+  variantNames <- paste0('p.', variants$wtAA, variants$pos, variants$mutAA)
+
+  for (i in 1:nrow(variants)) {
     wtAA <- as.character(variants$wtAA[i])
     mutAA <- as.character(variants$mutAA[i])
     pos <- as.integer(variants$pos[i])
+
     mutSeq <- mutateSequence(sequence = sequence,
                              pos = pos,
                              wtAA = wtAA,
                              mutAA = mutAA)
     mutMotifs <- searchSLiMs(sequence = mutSeq, motifRegex = motifRegex)
-    lostMotifs <- setdiff(wtMotifs, mutMotifs)
-    gainedMotifs <- setdiff(mutMotifs, wtMotifs)
 
-    print(variants[i,])
-    cat('Lost Motifs:',lostMotifs,'\n')
-    cat('Gained Motifs:',gainedMotifs,'\n')
+    lost <- setdiff(wtMotifs, mutMotifs)
+    if (length(lost) > 0) {
+      lostMotifs[[length(lostMotifs)+1]] <- lost
+      names(lostMotifs)[length(lostMotifs)] <- variantNames[i]
+    }
+
+    gained <- setdiff(mutMotifs, wtMotifs)
+
+    if (length(gained) > 0) {
+      gainedMotifs[[length(gainedMotifs)+1]] <- gained
+      names(gainedMotifs)[length(gainedMotifs)] <- variantNames[i]
+    }
   }
 }
 
-#elms <- getElmClasses()
-#motifRegex <- as.list(as.vector(elms$RegEx))
-#names(motifRegex) <- as.vector(elms$ELM_Identifier)
-
-#vars <- getHumSavar()
-#variants <- vars[vars$uniprotAcc == 'P11166',]
-
-findMotifChanges(sequence = paste(sampleFasta), variants = variants, motifRegex = motifRegex)
 
 

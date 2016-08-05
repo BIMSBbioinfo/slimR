@@ -11,11 +11,11 @@ findMotifChanges(sequence, variants, motifRegex)
 
 \item{variants}{A data.frame consisting of minimum three columns: 1.wtAA,
 2.mutAA, 3.pos where pos is the mutation position in the sequence, wtAA is
-the wild-type amino acid in the sequence and mutAA is the mutant amino
-acid.}
+the wild-type amino acid (one letter code) in the sequence and mutAA is the
+mutant amino acid (one letter code).}
 }
 \description{
-Find out which SLiMs are created de novo via point amino acid substitutions
-in protein sequences
+Find out which SLiMs are gained or lost (no longer matching the regex
+pattern) via point amino acid substitutions in protein sequences
 }
 
