@@ -97,5 +97,121 @@ getElmInstances <- function (query = '*',
   return(elmInstances)
 }
 
+#' runIUPred
+#'
+#' run IUPred tool to get disorder propensity scores of a given protein sequence
+#' in fasta format.
+#'
+#' run_IUPred.R: given a directory of fasta sequences of proteins; calculate
+#' per-base iupred disorder scores. IUPred source code can be dowloaded from
+#' here: http://iupred.enzim.hu/Downloads.php After unpacking the source code,
+#' cd to the src directory. Compile the code cc iupred.c -o iupred
+#'
+#' @param iupredPath The path to the folder containing the source code of the
+#'   IUPred tool
+#' @param fastaFiles A vector of file paths each pointing to a fasta file
+#'   containing the amino acid sequence of a single protein
+#' @param outDir The location where the IUPred result files should be stored.
+#' @param overwrite TRUE or FALSE (default). Whether the IUPred results should
+#'   be overwritten
+#' @param returnResultsAsList TRUE (default) or FALSE. Whether the result file should be
+#'   parsed and returned as a list of data.frame objects
+#' @export
+runIUPred <- function (iupredPath, fastaFiles, outDir = getwd(), overwrite = FALSE,
+                       returnResultsAsList = TRUE) {
 
+  iupredOutDir <- file.path(outDir, 'iupredResults')
+
+  if(!dir.exists(outDir)) {
+    dir.create(outDir)
+  }
+  if(!dir.exists(iupredOutDir)) {
+    dir.create(iupredOutDir)
+  }
+
+  for (i in 1:length(fastaFiles)) {
+    fastaFile <- fastaFiles[i]
+
+    iupredOut <- file.path(iupredOutDir, paste0(gsub(pattern = '.fasta$',
+                                                     replacement = '.iupred',
+                                                     x = basename(fastaFile))))
+
+    if (!file.exists(iupredOut) | overwrite == TRUE) {
+      myCommand <- paste(paste0("export IUPred_PATH=",iupredPath, ";"),
+                         file.path(iupredPath, 'iupred'),
+                         fastaFile, "long >", iupredOut)
+      system(command = myCommand)
+    }
+  }
+  if (returnResultsAsList == TRUE) {
+    results <- readIUPred(dir(path = iupredOutDir, full.names = TRUE))
+    names(results) <- gsub(pattern = '.iupred$', replacement = '', x = names(results))
+    return (results)
+  }
+}
+
+#' readIUpred
+#'
+#' Given a list of files each containing iupred results for a single protein,
+#' return a list of data frames where each data frame holds the iupred results.
+#'
+#' @param A vector of file paths containing the results of IUPred
+#' @return A list of data.frame objects
+readIUPred <- function(iupredResultFiles) {
+  results <- list()
+  for(f in iupredResultFiles) {
+    df <- read.table(f)
+    colnames(df) <- c('pos', 'AA', 'score')
+    results[[length(results)+1]] <- df
+    names(results)[length(results)] <- basename(f)
+  }
+  return(results)
+}
+
+#' downloadUniprotFiles
+#'
+#' Given a uniprot accession number and a file format, download the annotation
+#' file for a protein in uniprot in the given format. e.g. For human p53
+#' protein, the uniprot accession is P04637. This function can be used to
+#' download the fasta sequence of this protein from
+#' http://www.uniprot.org/uniprot/P04637.fasta. This function is mostly useful
+#' for bulk downloads when there are many uniprot accessions to be downloaded.
+#'
+#' @param uniprotAccessions A vector of uniprot accession numbers
+#' @param outDir Path to folder where downloaded files should be stored.
+#' @param format The format of files to be downloaded. Options are fasta, gff,
+#'   and txt.
+#' @param overwrite TRUE or FALSE (default). Whether the existing files should
+#'   be overwritten with a new download.
+#'
+#' @examples
+#' ids <- c('P04637', 'P11166', 'P06400')
+#' downloadUniprotFiles(uniprotAccessions = ids, outDir = getwd(),
+#'                                 format = 'fasta', overwrite = FALSE)
+#'
+#' @export
+downloadUniprotFiles <- function (uniprotAccessions, outDir, format, overwrite = FALSE) {
+  if (!format %in% c('fasta', 'gff', 'txt')) {
+    stop("Uniprot files can only be downloaded in fasta, gff or txt formats.",
+         format,"is not a valid option.")
+  }
+  subOutDir <- file.path(outDir, format)
+
+  if(!dir.exists(outDir)) {
+    dir.create(outDir)
+  }
+  if(!dir.exists(subOutDir)) {
+    dir.create(subOutDir)
+  }
+
+  for (i in 1:length(uniprotAccessions)) {
+    id <- uniprotAccessions[i]
+    fileUrl <- paste0("http://www.uniprot.org/uniprot/", id, ".", format)
+    fileOut <- file.path(subOutDir, paste0(id, '.', format))
+
+    if (!file.exists(fileOut) | overwrite == TRUE) {
+      download.file(url = fileUrl, destfile = fileOut, quiet = TRUE, mode = 'w')
+    }
+  }
+}
 
