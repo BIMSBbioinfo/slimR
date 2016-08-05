@@ -2,7 +2,7 @@
 % Please edit documentation in R/motifAnalysis.R
 \name{findMotifChanges}
 \alias{findMotifChanges}
-\title{findMotifKnockIns}
+\title{findMotifChanges}
 \usage{
 findMotifChanges(sequence, variants, motifRegex)
 }
