@@ -23,6 +23,11 @@
 #' and humsavar \url{www.uniprot.org/docs/humsavar.txt}
 "glutMutations"
 
+#' GLUT1 disorder score predictions by IUPred
+#'
+#' @return A data.frame object
+"glutIUPred"
+
 #' SLiM regular expressions from ELM database
 #'
 #' List of available SLiM classes and their regular expression defined in the
