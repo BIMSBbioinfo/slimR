@@ -70,6 +70,10 @@ mutateSequence <- function (sequence, pos, wtAA, mutAA) {
 #'   2.mutAA, 3.pos where pos is the mutation position in the sequence, wtAA is
 #'   the wild-type amino acid (one letter code) in the sequence and mutAA is the
 #'   mutant amino acid (one letter code).
+#' @examples
+#' c <- findMotifChanges(sequence = paste(glutFasta),
+#'                       variants = glutMutations,
+#'                      motifRegex = motifRegex)
 #' @export
 findMotifChanges <- function(sequence, variants, motifRegex) {
 
@@ -78,10 +82,8 @@ findMotifChanges <- function(sequence, variants, motifRegex) {
   #for each variant find the list of motif hits that would be gained/lost
   #if the sequence had that substitution mutation
 
-  lostMotifs <- list()
-  gainedMotifs <- list()
-
-  variantNames <- paste0('p.', variants$wtAA, variants$pos, variants$mutAA)
+  lostMotifs <- c()
+  gainedMotifs <- c()
 
   for (i in 1:nrow(variants)) {
     wtAA <- as.character(variants$wtAA[i])
@@ -92,21 +94,37 @@ findMotifChanges <- function(sequence, variants, motifRegex) {
                              pos = pos,
                              wtAA = wtAA,
                              mutAA = mutAA)
+
     mutMotifs <- searchSLiMs(sequence = mutSeq, motifRegex = motifRegex)
 
     lost <- setdiff(wtMotifs, mutMotifs)
     if (length(lost) > 0) {
-      lostMotifs[[length(lostMotifs)+1]] <- lost
-      names(lostMotifs)[length(lostMotifs)] <- variantNames[i]
+      lostMotifs <- c(lostMotifs,
+                      paste(wtAA, mutAA, pos,
+                            lost, 'lost', sep = ':'))
     }
 
     gained <- setdiff(mutMotifs, wtMotifs)
 
     if (length(gained) > 0) {
-      gainedMotifs[[length(gainedMotifs)+1]] <- gained
-      names(gainedMotifs)[length(gainedMotifs)] <- variantNames[i]
+      gainedMotifs <- c(gainedMotifs,
+                        paste(wtAA, mutAA, pos,
+                              gained, 'gained', sep = ':'))
     }
   }
+  wtSeq <- unlist(strsplit(sequence, split = ''))
+  change <- data.frame(do.call(rbind,
+                               strsplit(c(lostMotifs, gainedMotifs), ':')),
+                       stringsAsFactors = FALSE)
+  colnames(change) <- c('wtAA', 'mutAA', 'pos',
+                        'SLiM', 'SLiM_start', 'SLiM_end',
+                        'change')
+  change$RegEx <- motifRegex[change$SLiM]
+  change$SLiM_Sequence <- lapply(X = 1:nrow(change),
+                            FUN = function (x) {
+                              paste(wtSeq[change$SLiM_start[x]:change$SLiM_end[x]],
+                                    collapse = '')})
+  return(change)
 }
 
 

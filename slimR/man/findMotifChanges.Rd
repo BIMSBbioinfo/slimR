@@ -18,4 +18,9 @@ mutant amino acid (one letter code).}
 Find out which SLiMs are gained or lost (no longer matching the regex
 pattern) via point amino acid substitutions in protein sequences
 }
+\examples{
+c <- findMotifChanges(sequence = paste(glutFasta),
+                      variants = glutMutations,
+                     motifRegex = motifRegex)
+}
 
