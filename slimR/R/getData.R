@@ -190,7 +190,7 @@ readIUPred <- function(iupredResultFiles) {
 #'                                 format = 'fasta', overwrite = FALSE)
 #'
 #' @export
-downloadUniprotFiles <- function (uniprotAccessions, outDir, format, overwrite = FALSE) {
+downloadUniprotFiles <- function (uniprotAccessions, outDir = getwd(), format, overwrite = FALSE) {
   if (!format %in% c('fasta', 'gff', 'txt')) {
     stop("Uniprot files can only be downloaded in fasta, gff or txt formats.",
          format,"is not a valid option.")

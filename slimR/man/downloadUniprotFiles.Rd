@@ -4,7 +4,8 @@
 \alias{downloadUniprotFiles}
 \title{downloadUniprotFiles}
 \usage{
-downloadUniprotFiles(uniprotAccessions, outDir, format, overwrite = FALSE)
+downloadUniprotFiles(uniprotAccessions, outDir = getwd(), format,
+  overwrite = FALSE)
 }
 \arguments{
 \item{uniprotAccessions}{A vector of uniprot accession numbers}
