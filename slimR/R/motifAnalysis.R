@@ -112,19 +112,22 @@ findMotifChanges <- function(sequence, variants, motifRegex) {
                               gained, 'gained', sep = ':'))
     }
   }
-  wtSeq <- unlist(strsplit(sequence, split = ''))
-  change <- data.frame(do.call(rbind,
-                               strsplit(c(lostMotifs, gainedMotifs), ':')),
-                       stringsAsFactors = FALSE)
-  colnames(change) <- c('wtAA', 'mutAA', 'pos',
-                        'SLiM', 'SLiM_start', 'SLiM_end',
-                        'change')
-  change$RegEx <- motifRegex[change$SLiM]
-  change$SLiM_Sequence <- lapply(X = 1:nrow(change),
-                            FUN = function (x) {
-                              paste(wtSeq[change$SLiM_start[x]:change$SLiM_end[x]],
-                                    collapse = '')})
-  return(change)
+  change <- c(lostMotifs, gainedMotifs)
+  if (length(change) > 0) {
+    wtSeq <- unlist(strsplit(sequence, split = ''))
+    change <- data.frame(do.call(rbind,
+                                 strsplit(change, ':')),
+                         stringsAsFactors = FALSE)
+    colnames(change) <- c('wtAA', 'mutAA', 'pos',
+                          'SLiM', 'SLiM_start', 'SLiM_end',
+                          'change')
+    change$RegEx <- motifRegex[change$SLiM]
+    change$SLiM_Sequence <- lapply(X = 1:nrow(change),
+                                   FUN = function (x) {
+                                     paste(wtSeq[change$SLiM_start[x]:change$SLiM_end[x]],
+                                           collapse = '')})
+    return(change)
+  }
 }
 
 
