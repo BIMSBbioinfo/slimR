@@ -49,6 +49,42 @@ getHumSavar <- function () {
   return(mut)
 }
 
+#' parseUniprotHumanVariationData
+#'
+#' Parse the human variation data (homo_sapiens_variation.txt.gz) from Uniprot.
+#' The variation annotation contains polymorphism data from COSMIC, 1000GP etc.
+#' and mapped to Uniprot proteins.
+#' See ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/variants/homo_sapiens_variation.txt.gz
+#' TODO: add a parameter to overwrite the rds file generated
+#' @param filePath The path to the human variation data file (e.g homo_sapiens_variation.txt.gz) downloaded from Uniprot
+#' @return A data.table format table of mutation data
+#' @export
+parseUniprotHumanVariationData <- function (filePath, outFile = 'parseUniprotHumanVariationData.tsv',
+                                keepColumns = c(2,3,5,6,7,8,14),
+                                sourceDB = '1000Genomes',
+                                consequenceType = 'missense variant') {
+    if (!file.exists(paste0(filePath, '.rds'))) {
+      con <- file(filePath, 'r')
+      out <- file(outFile, 'w')
+      while (length(oneLine <- readLines(con, n = 1, warn = FALSE)) > 0) {
+        fields <- unlist(strsplit(oneLine, '\t'))
+        if(length(fields) == 14) {
+          if (fields[5] == consequenceType & grepl(sourceDB, fields[14]) == TRUE) {
+            writeLines(text = paste(fields[keepColumns], collapse = '\t'), con = out)
+          }
+        }
+      }
+      close(con = con)
+      close(con = out)
+      dt <- data.table::fread(outFile, sep = '\t', header = FALSE)
+      saveRDS(object = dt, file = paste0(filePath, '.rds'))
+    } else {
+      dt <- readRDS(paste0(filePath, '.rds'))
+    }
+    return(dt)
+}
+
+
 #' getElmClasses
 #'
 #' Scrape ELM classes table from elm.eu.org
@@ -122,6 +158,8 @@ runIUPred <- function (iupredPath, fastaFiles, outDir = getwd(), overwrite = FAL
 
   iupredOutDir <- file.path(outDir, 'iupredResults')
 
+  iupredResultFiles <- c()
+
   if(!dir.exists(outDir)) {
     dir.create(outDir)
   }
@@ -135,7 +173,7 @@ runIUPred <- function (iupredPath, fastaFiles, outDir = getwd(), overwrite = FAL
     iupredOut <- file.path(iupredOutDir, paste0(gsub(pattern = '.fasta$',
                                                      replacement = '.iupred',
                                                      x = basename(fastaFile))))
-
+    iupredResultFiles <- c(iupredResultFiles, iupredOut)
     if (!file.exists(iupredOut) | overwrite == TRUE) {
       myCommand <- paste(paste0("export IUPred_PATH=",iupredPath, ";"),
                          file.path(iupredPath, 'iupred'),
@@ -144,7 +182,7 @@ runIUPred <- function (iupredPath, fastaFiles, outDir = getwd(), overwrite = FAL
     }
   }
   if (returnResultsAsList == TRUE) {
-    results <- readIUPred(dir(path = iupredOutDir, full.names = TRUE))
+    results <- readIUPred(iupredResultFiles = iupredResultFiles)
     names(results) <- gsub(pattern = '.iupred$', replacement = '', x = names(results))
     return (results)
   }
