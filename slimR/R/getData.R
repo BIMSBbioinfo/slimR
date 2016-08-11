@@ -2,6 +2,7 @@
 #'
 #' Given a vector of mutation substitutions (e.g. "p.His160Arg")
 #' -> split "p.His160Arg" into "H 160 R"
+#' @export
 parseMutation <- function (mutations) {
   data(aaTable)
   mutations <- gsub(pattern = '^p.', replacement = '', x = mutations)
