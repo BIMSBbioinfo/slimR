@@ -1,72 +1,85 @@
 #find gain or loss of SLiMs via point mutations in trans-membrane and non-transmembrane proteins
 library('slimR')
-#setwd('~/Desktop/data/akalin/buyar/collaborations/selbach/mutantSLiMAnalysis')
-uniprotFastaDir <- '../data/uniprot/fasta'
-#uniprotFastaDir <- '../data/uniprot/sample_fasta/'
-uniprotGffDir <- '../data/uniprot/gff'
-iupredResultDir <- '../data/iupredResults/'
-iupredPath <- '~/Desktop/work/tools/iupred/'
-variants <- getHumSavar()
-data("motifRegex")
+#1. Collect arguments
+args <- commandArgs(TRUE)
 
-
-
-################# findMotifChanges due to mutations for a given list of fasta files in a given directory
-if (file.exists(file.path(getwd(), 'motifChanges.rds'))) {
-  motifChanges <- readRDS('motifChanges.rds')
-} else {
-  ptm <- proc.time()
-
-  fastaFiles <- dir(uniprotFastaDir, full.names = TRUE)
-
-  motifChanges <- list()
-
-  pb <- txtProgressBar(min = 0, max = length(fastaFiles), style = 3)
-
-  for (i in 1:length(fastaFiles)) {
-    setTxtProgressBar(pb, i)
-
-    fastaFile <- fastaFiles[i]
-
-    #read each fasta file, get the uniprotAcc from file name
-    #use slimR::downloadUniprotFiles to get fasta and gff files into a directory
-
-    uniAcc <- gsub(pattern = '.fasta$', replacement = '', x = basename(fastaFile))
-
-    #cat('analysing',uniAcc,'\n')
-
-    sequence <- paste(Biostrings::readAAStringSet(filepath = fastaFile, format = 'fasta'))
-    mutations <- variants[variants$uniprotAcc == uniAcc & variants$variant == 'Disease',]
-    if(nrow(mutations) > 0) {
-      changes <- findMotifChanges(sequence = sequence, variants = mutations, motifRegex = motifRegex)
-      if (!is.null(changes)) {
-        motifChanges[[length(motifChanges)+1]] <- changes
-        names(motifChanges)[length(motifChanges)] <- uniAcc
-      }
-    }
-  }
-
-  close(pb)
-  proc.time() - ptm
-
-  saveRDS(object = motifChanges, file = 'motifChanges.rds')
+## Default setting when no arguments passed
+if(length(args) < 3) {
+  args <- c("--help")
 }
 
-#################
+helpCommand = "
+download_uniprot.R: given a list of UniProt Accessions, download fasta and gff files for each protein
+
+Arguments:
+--unilist=<path to txt file>            List of uniprot accessions; one entry per line
+--uniprotDataDir=<path to folder>           Target directory where downloaded uniprot fasta/gff files should be stored
+--polymorphicVariantsFile<path to file>    The path to the file that contains human variation data from Uniprot (see help('parseUniprotHumanVariationData') function)
+--help                              display this help text and exit
+
+Example:
+Rscript mutantSLiMAnalysis \
+--unilist=./uniprotList.txt \
+--uniprotDataDir=/data/akalin/buyar/collaborations/selbach/data/uniprot/fasta \
+--polymorphicVariantsFile=/data/akalin/buyar/collaborations/selbach/data/uniprot/homo_sapiens_variation.txt.gz "
+
+
+## Help section
+if("--help" %in% args) {
+  cat(helpCommand, "\n")
+  q(save="no")
+}
+
+## Parse arguments (we expect the form --arg=value)
+parseArgs <- function(x) strsplit(sub("^--", "", x), "=")
+argsDF <- as.data.frame(do.call("rbind", parseArgs(args)))
+argsL <- as.list(as.character(argsDF$V2))
+names(argsL) <- argsDF$V1
+
+if(!("unilist" %in% argsDF$V1)) {
+  cat(helpCommand, "\n")
+  stop("provide the path to text file containing uniprot accessions\n")
+}
+
+if(!("uniprotDataDir" %in% argsDF$V1)) {
+  cat(helpCommand, "\n")
+  stop("provide a target directory where downloaded uniprot fasta/gff/txt files should be stored\n")
+}
+
+if(!("polymorphicVariantsFile" %in% argsDF$V1)) {
+  cat(helpCommand, "\n")
+  stop("Missing polymorphism data\n")
+}
+
+unilist <- argsL$unilist
+uniprotDataDir <- argsL$uniprotDataDir
+polymorphicVariantsFile <- argsL$polymorphicVariantsFile
+
+
+if(!dir.exists(uniprotDataDir)) {
+  stop(uniprotDataDir, 'Folder does not exist')
+}
+
+if (!file.exists(polymorphicVariantsFile)) {
+  stop(polymorphicVariantsFile, "File does not exist. See help('parseUniprotHumanVariationData')")
+}
+
+# read the list of uniprot accessions
+uniList <- scan(file = unilist, what = character())
 
 ################# Find cytosolic transmembrane regions of proteins
-if (file.exists(file.path(getwd(), 'ctmRegions.rds'))) {
-  ctmRegions <- readRDS('ctmRegions.rds')
-} else {
-  ptm <- proc.time()
-  gffFiles <- dir(path = uniprotGffDir, full.names = TRUE)
-  pb <- txtProgressBar(min = 0, max = length(gffFiles), style = 3)
-  ctmRegions <- list()
-  if(length(gffFiles) > 0) {
-    for (i in 1:length(gffFiles)) {
-      setTxtProgressBar(pb, i)
-      gffFile <- gffFiles[i]
-      uniAcc <- gsub(pattern = '.gff$', replacement = '', x = basename(gffFile))
+ptm <- proc.time()
+cat('Finding cytosolic transmembrane regions of proteins')
+pb <- txtProgressBar(min = 0, max = length(uniList), style = 3)
+ctmRegions <- list()
+if(length(uniList) > 0) {
+  for (i in 1:length(uniList)) {
+    setTxtProgressBar(pb, i)
+    uniAcc <- uniList[i]
+    downloadUniprotFiles(uniAcc, outDir = uniprotDataDir, format = 'gff')
+    gffFile <- file.path(uniprotDataDir, 'gff', paste0(uniAcc, '.gff'))
+
+    if (file.exists(gffFile)) {
       features <- rtracklayer::import.gff(gffFile)
       ctm <- features[features$type == 'Topological domain',]
       ctm <- ctm[grep(pattern = 'Cytoplasmic', x = ctm$Note),]
@@ -76,19 +89,62 @@ if (file.exists(file.path(getwd(), 'ctmRegions.rds'))) {
       }
     }
   }
-  close(pb)
-  proc.time() - ptm
-  saveRDS(object = ctmRegions, file = 'ctmRegions.rds')
+}
+close(pb)
+proc.time() - ptm
+
+
+################# findMotifChanges due to mutations for a given list of uniprot accessions
+
+variants <- getHumSavar()
+
+ptm <- proc.time()
+
+downloadUniprotFiles(uniprotAccessions = names(ctmRegions), outDir = uniprotDataDir, format = 'fasta')
+fastaFiles <- file.path(uniprotDataDir, 'fasta', paste0(names(ctmRegions), '.fasta'))
+
+motifChangesDisease <- list()
+motifChangesPolymorphism <- list()
+
+pb <- txtProgressBar(min = 0, max = length(fastaFiles), style = 3)
+
+for (i in 1:length(fastaFiles)) {
+  setTxtProgressBar(pb, i)
+
+  fastaFile <- fastaFiles[i]
+
+  #read each fasta file, get the uniprotAcc from file name
+  #use slimR::downloadUniprotFiles to get fasta and gff files into a directory
+
+  uniAcc <- gsub(pattern = '.fasta$', replacement = '', x = basename(fastaFile))
+
+  #cat('analysing',uniAcc,'\n')
+
+  sequence <- paste(Biostrings::readAAStringSet(filepath = fastaFile, format = 'fasta'))
+
+  diseaseVariants <- variants[variants$uniprotAcc == uniAcc & variants$variant == 'Disease',]
+  if(nrow(diseaseVariants) > 0) {
+    changes <- findMotifChanges(sequence = sequence, variants = diseaseVariants, motifRegex = motifRegex)
+    if (!is.null(changes)) {
+      motifChangesDisease[[length(motifChangesDisease)+1]] <- changes
+      names(motifChangesDisease)[length(motifChangesDisease)] <- uniAcc
+    }
+  }
+  polymorphicVariants <- variants[variants$uniprotAcc == uniAcc & variants$variant == 'Polymorphism',]
+  if(nrow(polymorphicVariants) > 0) {
+    changes <- findMotifChanges(sequence = sequence, variants = polymorphicVariants, motifRegex = motifRegex)
+    if (!is.null(changes)) {
+      motifChangesPolymorphism[[length(motifChangesPolymorphism)+1]] <- changes
+      names(motifChangesPolymorphism)[length(motifChangesPolymorphism)] <- uniAcc
+    }
+  }
 }
 
+close(pb)
+proc.time() - ptm
 
-################# Find disorder scores of proteins
-if (file.exists(file.path(getwd(), 'iupredScores.rds'))) {
-  iupredScores <- readRDS(file = 'iupredScores.rds')
-} else {
-  iupredScores <- runIUPred(iupredPath = iupredPath, outDir = iupredResultDir, fastaFiles = dir(path = uniprotFastaDir, full.names = TRUE))
-  saveRDS(object = iupredScores, file = 'iupredScores.rds')
-}
+#################TODO: find motif changes in cytosolic regions of transmembrane proteins
 
-polymorphisms <- parseUniprotHumanVariationData(filePath = '../data/uniprot/homo_sapiens_variation.txt.gz')
+#################TODO: compare frequency of loss/gain of motifs in disease vs polymorphism datasets
+
 

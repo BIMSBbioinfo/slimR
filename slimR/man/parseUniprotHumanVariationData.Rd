@@ -20,5 +20,6 @@ Parse the human variation data (homo_sapiens_variation.txt.gz) from Uniprot.
 The variation annotation contains polymorphism data from COSMIC, 1000GP etc.
 and mapped to Uniprot proteins.
 See ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/variants/homo_sapiens_variation.txt.gz
+TODO: add a parameter to overwrite the rds file generated
 }
 
