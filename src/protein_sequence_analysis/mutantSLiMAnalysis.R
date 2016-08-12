@@ -14,14 +14,12 @@ download_uniprot.R: given a list of UniProt Accessions, download fasta and gff f
 Arguments:
 --unilist=<path to txt file>            List of uniprot accessions; one entry per line
 --uniprotDataDir=<path to folder>           Target directory where downloaded uniprot fasta/gff files should be stored
---polymorphicVariantsFile<path to file>    The path to the file that contains human variation data from Uniprot (see help('parseUniprotHumanVariationData') function)
 --help                              display this help text and exit
 
 Example:
 Rscript mutantSLiMAnalysis \
 --unilist=./uniprotList.txt \
---uniprotDataDir=/data/akalin/buyar/collaborations/selbach/data/uniprot/fasta \
---polymorphicVariantsFile=/data/akalin/buyar/collaborations/selbach/data/uniprot/homo_sapiens_variation.txt.gz "
+--uniprotDataDir=/data/akalin/buyar/collaborations/selbach/data/uniprot/fasta "
 
 
 ## Help section
@@ -46,23 +44,14 @@ if(!("uniprotDataDir" %in% argsDF$V1)) {
   stop("provide a target directory where downloaded uniprot fasta/gff/txt files should be stored\n")
 }
 
-if(!("polymorphicVariantsFile" %in% argsDF$V1)) {
-  cat(helpCommand, "\n")
-  stop("Missing polymorphism data\n")
-}
-
 unilist <- argsL$unilist
 uniprotDataDir <- argsL$uniprotDataDir
-polymorphicVariantsFile <- argsL$polymorphicVariantsFile
 
 
 if(!dir.exists(uniprotDataDir)) {
   stop(uniprotDataDir, 'Folder does not exist')
 }
 
-if (!file.exists(polymorphicVariantsFile)) {
-  stop(polymorphicVariantsFile, "File does not exist. See help('parseUniprotHumanVariationData')")
-}
 
 # read the list of uniprot accessions
 uniList <- scan(file = unilist, what = character())
@@ -81,70 +70,69 @@ if(length(uniList) > 0) {
 
     if (file.exists(gffFile)) {
       features <- rtracklayer::import.gff(gffFile)
-      ctm <- features[features$type == 'Topological domain',]
-      ctm <- ctm[grep(pattern = 'Cytoplasmic', x = ctm$Note),]
-      if(length(ctm) > 0) {
-        ctmRegions[[length(ctmRegions)+1]] <- ctm
-        names(ctmRegions)[length(ctmRegions)] <- uniAcc
+      if (sum(c('type', 'Note') %in% colnames(mcols(features))) == 2) {
+        ctm <- features[features$type == 'Topological domain' & grepl(pattern = 'Cytoplasmic', x = features$Note),]
+        if(length(ctm) > 0) {
+          mcols(ctm) <- subset(x = mcols(ctm), select = c('type', 'Note'))
+          ctmRegions[[length(ctmRegions)+1]] <- ctm
+          names(ctmRegions)[length(ctmRegions)] <- uniAcc
+        }
       }
     }
   }
 }
+ctmRegions <- unlist(GenomicRanges::GRangesList(ctmRegions))
 close(pb)
 proc.time() - ptm
 
-
+#################find variants in cytosolic regions of transmembrane proteins '
+variants <- getHumSavar()
+overlaps <- GenomicRanges::findOverlaps(query = variants, subject = ctmRegions)
+variantsFiltered <- variants[queryHits(overlaps),]
 ################# findMotifChanges due to mutations for a given list of uniprot accessions
 
-variants <- getHumSavar()
 
-ptm <- proc.time()
+# variants A Granges object of variants parsed from Humsavar using getHumSavar() function or a subset of it with the same structure
+findMotifChangesBulk <- function (variants) {
 
-downloadUniprotFiles(uniprotAccessions = names(ctmRegions), outDir = uniprotDataDir, format = 'fasta')
-fastaFiles <- file.path(uniprotDataDir, 'fasta', paste0(names(ctmRegions), '.fasta'))
+  ptm <- proc.time()
 
-motifChangesDisease <- list()
-motifChangesPolymorphism <- list()
+  motifChanges <- list()
 
-pb <- txtProgressBar(min = 0, max = length(fastaFiles), style = 3)
+  #load regular expressions for motifs
+  data("motifRegex")
 
-for (i in 1:length(fastaFiles)) {
-  setTxtProgressBar(pb, i)
+  uniprotAccessions <- unique(as.vector(seqnames(variants)))
+  downloadUniprotFiles(uniprotAccessions = uniprotAccessions, outDir = uniprotDataDir, format = 'fasta')
 
-  fastaFile <- fastaFiles[i]
+  pb <- txtProgressBar(min = 0, max = length(uniprotAccessions), style = 3)
 
-  #read each fasta file, get the uniprotAcc from file name
-  #use slimR::downloadUniprotFiles to get fasta and gff files into a directory
+  for (i in 1:length(uniprotAccessions)) {
+    setTxtProgressBar(pb, i)
+    uniAcc <- uniprotAccessions[i]
+    fastaFile <- file.path(uniprotDataDir, 'fasta', paste0(uniAcc, '.fasta'))
 
-  uniAcc <- gsub(pattern = '.fasta$', replacement = '', x = basename(fastaFile))
+    if(file.exists(fastaFile)) {
+      sequence <- paste(Biostrings::readAAStringSet(filepath = fastaFile, format = 'fasta'))
 
-  #cat('analysing',uniAcc,'\n')
+      myVariants <- variants[seqnames(variants) == uniAcc]
 
-  sequence <- paste(Biostrings::readAAStringSet(filepath = fastaFile, format = 'fasta'))
+      df <- data.frame('wtAA' = as.vector(myVariants$wtAA),
+                       'mutAA' = as.vector(myVariants$mutAA),
+                       'pos' = start(myVariants))
 
-  diseaseVariants <- variants[variants$uniprotAcc == uniAcc & variants$variant == 'Disease',]
-  if(nrow(diseaseVariants) > 0) {
-    changes <- findMotifChanges(sequence = sequence, variants = diseaseVariants, motifRegex = motifRegex)
-    if (!is.null(changes)) {
-      motifChangesDisease[[length(motifChangesDisease)+1]] <- changes
-      names(motifChangesDisease)[length(motifChangesDisease)] <- uniAcc
+      changes <- findMotifChanges(sequence = sequence, variants = df, motifRegex = motifRegex)
+      if (!is.null(changes)) {
+        motifChanges[[length(motifChanges)+1]] <- changes
+        names(motifChanges)[length(motifChanges)] <- uniAcc
+      }
     }
   }
-  polymorphicVariants <- variants[variants$uniprotAcc == uniAcc & variants$variant == 'Polymorphism',]
-  if(nrow(polymorphicVariants) > 0) {
-    changes <- findMotifChanges(sequence = sequence, variants = polymorphicVariants, motifRegex = motifRegex)
-    if (!is.null(changes)) {
-      motifChangesPolymorphism[[length(motifChangesPolymorphism)+1]] <- changes
-      names(motifChangesPolymorphism)[length(motifChangesPolymorphism)] <- uniAcc
-    }
-  }
+
+  close(pb)
+  proc.time() - ptm
+  return(motifChanges)
 }
-
-close(pb)
-proc.time() - ptm
-
-#################TODO: find motif changes in cytosolic regions of transmembrane proteins
-
 #################TODO: compare frequency of loss/gain of motifs in disease vs polymorphism datasets
 
 
