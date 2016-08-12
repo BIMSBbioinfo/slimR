@@ -1,11 +1,12 @@
 #find gain or loss of SLiMs via point mutations in trans-membrane and non-transmembrane proteins
 library('slimR')
 library('data.table')
+library('GenomicRanges')
 #1. Collect arguments
 args <- commandArgs(TRUE)
 
 ## Default setting when no arguments passed
-if(length(args) < 3) {
+if(length(args) < 2) {
   args <- c("--help")
 }
 
@@ -100,6 +101,7 @@ findMotifChangesBulk <- function (variants) {
 # read the list of uniprot accessions
 uniList <- scan(file = unilist, what = character())
 
+cat('Finding cytosolic transmembrane regions of proteins','\n')
 ################# Find cytosolic transmembrane regions of proteins
 ptm <- proc.time()
 cat('Finding cytosolic transmembrane regions of proteins')
@@ -130,11 +132,14 @@ close(pb)
 proc.time() - ptm
 
 #################find variants in cytosolic regions of transmembrane proteins '
+cat('finding variants in cytosolic regions of transmembrane proteins\n')
 variants <- getHumSavar()
 overlaps <- GenomicRanges::findOverlaps(query = variants, subject = ctmRegions)
 variantsFiltered <- variants[queryHits(overlaps),]
 ################# findMotifChanges due to mutations for a given list of uniprot accessions
 #motif changes due to disease mutations (that overlap cytosolic regions of trans-membrane proteins)
+cat('Finding motif changes due to mutations\n')
+
 diseaseVariants <- variantsFiltered[variantsFiltered$variant == 'Disease',]
 mcD <- data.table(do.call(rbind, findMotifChangesBulk(variants = diseaseVariants)))
 #motif changes due to polymorphisms  (that overlap cytosolic regions of trans-membrane proteins)
