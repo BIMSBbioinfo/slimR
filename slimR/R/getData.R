@@ -18,6 +18,7 @@ parseMutation <- function (mutations) {
 #' getHumSavar
 #'
 #' Download and parse protein mutation data from UniProt
+#' @return A Granges object containing the coordinates of mutated sites in proteins
 #' @export
 getHumSavar <- function () {
   variantFile <- file.path(getwd(), 'humsavar.txt')
@@ -47,6 +48,11 @@ getHumSavar <- function () {
 
   mut <- cbind(mut, parsedMut)
 
+  mut <- GenomicRanges::makeGRangesFromDataFrame(df = mut,
+                                                 keep.extra.columns = TRUE,
+                                                 ignore.strand = TRUE,
+                                                 seqnames.field = 'uniprotAcc',
+                                                 start.field = 'pos', end.field = 'pos')
   return(mut)
 }
 
