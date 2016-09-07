@@ -130,5 +130,58 @@ findMotifChanges <- function(sequence, variants, motifRegex) {
   }
 }
 
+#' findMotifChangesBulk
+#'
+#' Find out which SLiMs are gained or lost (no longer matching the regex
+#' pattern) via point amino acid substitutions in protein sequences
+#'
+#' @param variants A Granges object of variants parsed from Humsavar
+#' using getHumSavar() function or a subset of it with the same structure
+#'   consisting of minimum two meta-data columns: 1.wtAA,
+#'   2.mutAA, wtAA is the wild-type amino acid (one letter code) in the
+#'   sequence and mutAA is the mutant amino acid (one letter code).
+#' @param uniprotDataDir The folder that is used to download/store uniprot
+#' data files
+#' @export
+findMotifChangesBulk <- function (variants, uniprotDataDir) {
 
+  ptm <- proc.time()
+
+  motifChanges <- list()
+
+  #load regular expressions for motifs
+  data("motifRegex")
+
+  uniprotAccessions <- unique(as.vector(seqnames(variants)))
+  downloadUniprotFiles(uniprotAccessions = uniprotAccessions, outDir = uniprotDataDir, format = 'fasta')
+
+  pb <- txtProgressBar(min = 0, max = length(uniprotAccessions), style = 3)
+
+  for (i in 1:length(uniprotAccessions)) {
+    setTxtProgressBar(pb, i)
+    uniAcc <- uniprotAccessions[i]
+    fastaFile <- file.path(uniprotDataDir, 'fasta', paste0(uniAcc, '.fasta'))
+
+    if(file.exists(fastaFile)) {
+      sequence <- paste(Biostrings::readAAStringSet(filepath = fastaFile, format = 'fasta'))
+
+      myVariants <- variants[seqnames(variants) == uniAcc]
+
+      df <- data.frame('wtAA' = as.vector(myVariants$wtAA),
+                       'mutAA' = as.vector(myVariants$mutAA),
+                       'pos' = start(myVariants))
+
+      changes <- findMotifChanges(sequence = sequence, variants = df, motifRegex = motifRegex)
+      if (!is.null(changes)) {
+        changes$uniprotAcc <- uniAcc
+        motifChanges[[length(motifChanges)+1]] <- changes
+        names(motifChanges)[length(motifChanges)] <- uniAcc
+      }
+    }
+  }
+
+  close(pb)
+  proc.time() - ptm
+  return(motifChanges)
+}
 
