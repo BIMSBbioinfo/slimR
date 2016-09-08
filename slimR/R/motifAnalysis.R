@@ -22,8 +22,7 @@ searchSLiMs <- function(sequence, motifRegex) {
   unlist(lapply(X = c(1:length(names(hits))),
                 FUN = function(x) {paste0(names(hits)[x],
                                           ':', hits[[x]]$start,
-                                          ':', hits[[x]]$end,
-                                          ':', hits[[x]]$match)}))
+                                          ':', hits[[x]]$end)}))
 }
 
 #' locateAllRegex
@@ -136,8 +135,12 @@ findMotifChanges <- function(sequence, variants, motifRegex) {
                          stringsAsFactors = FALSE)
     colnames(change) <- c('wtAA', 'mutAA', 'pos',
                           'SLiM', 'SLiM_start', 'SLiM_end',
-                          'SLiM_Sequence', 'change')
+                          'change')
     change$RegEx <- motifRegex[change$SLiM]
+    change$SLiM_Sequence <- lapply(X = 1:nrow(change),
+                                   FUN = function (x) {
+                                     paste(wtSeq[change$SLiM_start[x]:change$SLiM_end[x]],
+                                           collapse = '')})
     return(change)
   }
 }
