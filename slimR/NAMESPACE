@@ -2,9 +2,11 @@
 
 export(downloadUniprotFiles)
 export(findMotifChanges)
+export(findMotifChangesBulk)
 export(getElmClasses)
 export(getElmInstances)
 export(getHumSavar)
+export(locateAllRegex)
 export(mutateSequence)
 export(parseMutation)
 export(parseUniprotHumanVariationData)

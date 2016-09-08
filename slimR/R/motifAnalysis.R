@@ -15,16 +15,32 @@
 #' searchSLiMs(sampleFasta, motifRegex)
 #' @return A list of data.frame objects.
 #' @export
-searchSLiMs <- function (sequence, motifRegex) {
-  hits <- lapply(X = motifRegex,
-                 FUN = function(x) { stringr::str_locate_all(sequence, x)})
-  hits <- lapply(X = hits, FUN = function (x) { df <- data.frame(x[[1]]) })
+searchSLiMs <- function(sequence, motifRegex) {
+  hits <- lapply(X = motifRegex, function(x) {locateAllRegex(sequence = sequence,
+                                                             pattern = x)})
   hits <- hits[lapply(hits, nrow)  > 0]
-
   unlist(lapply(X = c(1:length(names(hits))),
-                          FUN = function(x) {paste0(names(hits)[x],
-                                                    ':', hits[[x]]$start,
-                                                    ':', hits[[x]]$end)}))
+                FUN = function(x) {paste0(names(hits)[x],
+                                          ':', hits[[x]]$start,
+                                          ':', hits[[x]]$end,
+                                          ':', hits[[x]]$match)}))
+}
+
+#' locateAllRegex
+#'
+#' Finds the positions and substrings of all overlapping
+#' matches of regexes in a given sequence
+#'
+#' @param sequence A character vector
+#' @param pattern PERL like regular expression
+#' @export
+locateAllRegex <- function (sequence, pattern) {
+  startPos <- pracma::refindall(s = sequence, pat = pattern)
+  matchSeq <- unlist(lapply(startPos, function(x) {
+    pracma::regexp(s = substring(sequence, x), pat = pattern, once = TRUE)$match
+    }))
+  endPos <- startPos + nchar(matchSeq) - 1
+  return(data.frame('start' = startPos, 'end' = endPos, 'match' = matchSeq, stringsAsFactors = FALSE))
 }
 
 #' mutateSequence
@@ -120,12 +136,8 @@ findMotifChanges <- function(sequence, variants, motifRegex) {
                          stringsAsFactors = FALSE)
     colnames(change) <- c('wtAA', 'mutAA', 'pos',
                           'SLiM', 'SLiM_start', 'SLiM_end',
-                          'change')
+                          'SLiM_Sequence', 'change')
     change$RegEx <- motifRegex[change$SLiM]
-    change$SLiM_Sequence <- lapply(X = 1:nrow(change),
-                                   FUN = function (x) {
-                                     paste(wtSeq[change$SLiM_start[x]:change$SLiM_end[x]],
-                                           collapse = '')})
     return(change)
   }
 }
