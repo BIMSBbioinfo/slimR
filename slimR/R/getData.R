@@ -1,3 +1,115 @@
+#' createDB
+#'
+#' Given a uniprot accession, extract and process all available sequence
+#' features including:
+#' 1. Fasta sequences
+#' 2. Disorder predictions using IUPred
+#' 3. Uniprot feature files downloaded in gff format
+#' 4. Uniprot variants including disease-causing and polymorphic substitutions
+#' 5. Short linear motifs - all substrings matching all available patterns
+#' 6. SLiM Changes - The collection of changes in the proteins' SLiM content
+#' when variants at 4) are applied to the sequence
+#'
+#' @param uniprotAccessions A vector of uniprot accessions e.g. c('P04637',
+#'   'P06300')
+#' @param workingDirectory The name of the folder to write downloaded/processed
+#'   files and RDS objects
+#' @param overwrite TRUE/FALSE (default: FALSE). Boolean to decide if downloaded
+#'   files should overwrite existing files
+#' @return A list object with variable data types
+#'   directory
+#' @export
+createDB <- function (iupredPath = '/Users/buyar/Desktop/work/tools/iupred',
+                      uni,
+                      workingDirectory = getwd(),
+                      overwrite = FALSE) {
+
+  setwd(dir = workingDirectory)
+  variants <- getHumSavar()
+
+  variants <- variants[GenomicRanges::seqnames(variants) == uni,]
+
+  downloadUniprotFiles(uniprotAccessions = uni,
+                       format = 'fasta',
+                       overwrite = overwrite)
+
+  downloadUniprotFiles(uniprotAccessions = uni,
+                       format = 'gff',
+                       overwrite = overwrite)
+
+
+  db <- list('sequence' = NA, 'iupredScore' = NA, 'diseaseVars' = NA, 'polymorphicVars' = NA,
+             'uniprotFeatures' = NA, 'slims' = NA,
+             'slimChangesDisease' = NA, 'slimChangesPolymorphism' = NA)
+
+
+  fastaFile <- file.path(getwd(), 'fasta', paste0(uni, '.fasta'))
+
+  if (file.exists(fastaFile)) {
+    sequence <- paste(Biostrings::readAAStringSet(filepath = fastaFile, format = 'fasta'))
+
+    if(length(sequence) == 0){
+      warning("Fasta file for ",uni,"is empty. Stopped collecting other features for this id
+              Check file:",fastaFile)
+      return(0)
+    } else {
+      db$sequence <- sequence
+    }
+
+    iupredResults <- runIUPred(iupredPath = iupredPath,
+                               fastaFiles = c(fastaFile),
+                               overwrite = overwrite)
+
+    if(uni %in% names(iupredResults)) {
+      db$iupredScore <- iupredResults[[uni]]
+      if (nrow(db$iupredScore) == 0) {
+        warning("IUPred file for ",uni,"is empty.")
+        db$iupredScore = NA
+      }
+    }
+
+    slims <- slimR::searchSLiMs(sequence = sequence, motifRegex = slimR::motifRegex)
+    if(length(slims) > 0){
+      db$slims <- slims
+    }
+
+    db$diseaseVars <- variants[variants$variant == 'Disease',]
+    db$polymorphicVars <- variants[variants$variant == 'Polymorphism',]
+
+    if(length(db$diseaseVars) > 0){
+      db$slimChangesDisease <- slimR::findMotifChanges(
+        sequence = sequence,
+        variants = unique(
+          data.frame('wtAA' = db$diseaseVars$wtAA,
+                     'mutAA' = db$diseaseVars$mutAA,
+                     'pos' = GenomicRanges::start(db$diseaseVars))),
+        motifRegex = slimR::motifRegex)
+    }
+
+    if (length(db$polymorphicVars) > 0) {
+      db$slimChangesPolymorphism <- slimR::findMotifChanges(
+        sequence = sequence,
+        variants = unique(
+          data.frame('wtAA' = db$polymorphicVars$wtAA,
+                     'mutAA' = db$polymorphicVars$mutAA,
+                     'pos' = GenomicRanges::start(db$polymorphicVars))),
+        motifRegex = slimR::motifRegex)
+    }
+  }
+
+  gffFile <- file.path(getwd(), 'gff', paste0(uni, '.gff'))
+  if (file.exists(gffFile)) {
+    db$uniprotFeatures <- rtracklayer::import.gff(con = gffFile)
+    if(length(db$uniprotFeatures) == 0){
+      warning("GFF file for ",uni,"seems to be empty or could not be imported
+              Check file:",gffFile)
+      db$uniprotFeatures <- NA
+    }
+  }
+
+  return(db)
+  }
+
 #' parseMutation
 #'
 #' Given a vector of mutation substitutions (e.g. "p.His160Arg")
@@ -25,35 +137,45 @@ getHumSavar <- function () {
   if (!file.exists(variantFile)) {
     download.file(url = 'www.uniprot.org/docs/humsavar.txt',
                   destfile = variantFile)
+  } else {
+      warning("humsavar.txt exists at current folder",getwd(),
+              ", a new one won't be downloaded. Remove the existing
+              file and re-run the function to update the file")
   }
-  #skip first 30 lines which don't contain mutation data
-  dat <- readLines(con = variantFile)[-(1:30)]
 
-  #grep the lines with relevant variant data
-  mut <- grep(pattern = "Polymorphism|Disease|Unclassified",
-              x = dat,
-              perl = TRUE,
-              value = TRUE)
-  mut <- data.frame(
-    do.call(rbind,
-            stringr::str_split(string = mut,
-                               n = 7,
-                               pattern = '\\s+')))
+  if(file.exists(paste0(variantFile, '.RDS'))){
+    return(readRDS(paste0(variantFile, '.RDS')))
+  } else {
+    #skip first 30 lines which don't contain mutation data
+    dat <- readLines(con = variantFile)[-(1:30)]
 
-  colnames(mut) <- c('geneName', 'uniprotAcc',
-                     'FTId', 'change',
-                     'variant', 'dbSNP', 'diseaseName')
+    #grep the lines with relevant variant data
+    mut <- grep(pattern = "Polymorphism|Disease|Unclassified",
+                x = dat,
+                perl = TRUE,
+                value = TRUE)
+    mut <- data.frame(
+      do.call(rbind,
+              stringr::str_split(string = mut,
+                                 n = 7,
+                                 pattern = '\\s+')))
 
-  parsedMut <- parseMutation(mutations = mut$change)
+    colnames(mut) <- c('geneName', 'uniprotAcc',
+                       'FTId', 'change',
+                       'variant', 'dbSNP', 'diseaseName')
 
-  mut <- cbind(mut, parsedMut)
+    parsedMut <- parseMutation(mutations = mut$change)
 
-  mut <- GenomicRanges::makeGRangesFromDataFrame(df = mut,
-                                                 keep.extra.columns = TRUE,
-                                                 ignore.strand = TRUE,
-                                                 seqnames.field = 'uniprotAcc',
-                                                 start.field = 'pos', end.field = 'pos')
-  return(mut)
+    mut <- cbind(mut, parsedMut)
+
+    mut <- GenomicRanges::makeGRangesFromDataFrame(df = mut,
+                                                   keep.extra.columns = TRUE,
+                                                   ignore.strand = TRUE,
+                                                   seqnames.field = 'uniprotAcc',
+                                                   start.field = 'pos', end.field = 'pos')
+    saveRDS(object = mut, file = paste0(variantFile, ".RDS"))
+    return(mut)
+  }
 }
 
 #' parseUniprotHumanVariationData
@@ -104,7 +226,11 @@ getElmClasses <- function () {
   colnames(elmClasses) <- gsub(pattern = ' ',
                                replacement = '_',
                                x = colnames(elmClasses))
-  return(elmClasses)
+
+  motifRegex <- as.list(as.vector(elmClasses$RegEx))
+  names(motifRegex) <- as.vector(elmClasses$ELM_Identifier)
+
+  return(motifRegex)
 }
 
 
@@ -123,20 +249,25 @@ getElmInstances <- function (query = '*',
                              instanceLogic = 'true+positive',
                              taxon = 'homo+sapiens') {
   outFile <- file.path(getwd(), 'elmInstances.tsv')
-  if(!exists(outFile)) {
+  if(!file.exists(outFile)) {
     myUrl <- paste0('http://elm.eu.org/instances.tsv?q=',query,
                     '&instance_logic=',instanceLogic,
                     '&taxon=',taxon
                     )
     download.file(url = myUrl, destfile = outFile)
+  } else {
+    warning("elmInstances.tsv exists at current folder",getwd(),
+            ", a new one won't be downloaded. Remove the existing
+            file and re-run the function to update the file")
   }
   df <- read.table(outFile, sep = '\t', skip = 5, header = TRUE)
-  elmInstances <- GenomicRanges::makeGRangesFromDataFrame(df = df,
-                                                keep.extra.columns = TRUE,
-                                                ignore.strand = TRUE,
-                                                seqnames.field = 'Primary_Acc',
-                                                start.field = 'Start',
-                                                end.field = 'End')
+  elmInstances <- GenomicRanges::makeGRangesFromDataFrame(
+    df = df,
+    keep.extra.columns = TRUE,
+    ignore.strand = TRUE,
+    seqnames.field = 'Primary_Acc',
+    start.field = 'Start',
+    end.field = 'End')
   return(elmInstances)
 }
 
