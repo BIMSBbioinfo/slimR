@@ -4,7 +4,7 @@
 \name{motifRegex}
 \alias{motifRegex}
 \title{SLiM regular expressions from ELM database}
-\format{An object of class \code{list} of length 251.}
+\format{An object of class \code{list} of length 263.}
 \source{
 ELM classes \url{http://elm.eu.org/elms}
 }
