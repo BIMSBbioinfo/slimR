@@ -7,12 +7,9 @@
 #' @param motifRegex A list object where names of the list are ELM identifiers
 #'  and each list item has one ELM regex
 #' @examples
-#' data(sampleFasta)
+#' data("glutFasta")
 #' motifRegex <- list('TRG_ENDOCYTIC_2' = 'Y..[LMVIF]')
-#' #or
-#' #motifRegex <- as.list(as.vector(elms$RegEx))
-#' #names(motifRegex) <- as.vector(elms$ELM_Identifier)
-#' searchSLiMs(sampleFasta, motifRegex)
+#' searchSLiMs(paste(glutFasta), motifRegex)
 #' @return A list of data.frame objects.
 #' @export
 searchSLiMs <- function(sequence, motifRegex) {

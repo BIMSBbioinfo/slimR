@@ -20,11 +20,8 @@ Using regular expressions of SLiMs, find all matches of given SLiM patterns
 in a given sequence
 }
 \examples{
-data(sampleFasta)
+data("glutFasta")
 motifRegex <- list('TRG_ENDOCYTIC_2' = 'Y..[LMVIF]')
-#or
-#motifRegex <- as.list(as.vector(elms$RegEx))
-#names(motifRegex) <- as.vector(elms$ELM_Identifier)
-searchSLiMs(sampleFasta, motifRegex)
+searchSLiMs(paste(glutFasta), motifRegex)
 }
 
