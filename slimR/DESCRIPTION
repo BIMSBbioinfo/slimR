@@ -6,7 +6,8 @@ Author: Who wrote it
 Maintainer: Who to complain to <yourfault@somewhere.net>
 Description: More about what it does (maybe more than one line)
 Depends: 
-    doParallel
+    doParallel,
+    GenomicRanges
 License: What license is it under?
 LazyData: TRUE
 RoxygenNote: 5.0.1
