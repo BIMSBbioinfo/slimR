@@ -376,7 +376,7 @@ runIUPred <- function (iupredPath, fastaFiles, outDir = getwd(), overwrite = FAL
     if (!file.exists(iupredOut) | overwrite == TRUE) {
       myCommand <- paste(paste0("export IUPred_PATH=",iupredPath, ";"),
                          file.path(iupredPath, 'iupred'),
-                         fastaFile, "long >", iupredOut)
+                         fastaFile, "short >", iupredOut)
       system(command = myCommand)
     }
   }
