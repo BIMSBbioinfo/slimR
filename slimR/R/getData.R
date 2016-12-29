@@ -178,14 +178,13 @@ extractProteinData <- function (iupredPath,
 #' -> split "p.His160Arg" into "H 160 R"
 #' @export
 parseMutation <- function (mutations) {
-  data(aaTable)
   mutations <- gsub(pattern = '^p.', replacement = '', x = mutations)
   pos <- stringr::str_match(pattern = '\\d+', string = mutations)
   df <- data.frame(do.call(rbind, stringr::str_split(pattern = '\\d+', string = mutations)))
   df$pos <- pos
   colnames(df) <- c('wtAA', 'mutAA', 'pos')
-  df$wtAA <- aaTable$oneLetterCode[match(df$wtAA, aaTable$threeLetterCode)]
-  df$mutAA <- aaTable$oneLetterCode[match(df$mutAA, aaTable$threeLetterCode)]
+  df$wtAA <- slimR::aaTable$oneLetterCode[match(df$wtAA, slimR::aaTable$threeLetterCode)]
+  df$mutAA <- slimR::aaTable$oneLetterCode[match(df$mutAA, slimR::aaTable$threeLetterCode)]
   return(df)
 }
 
