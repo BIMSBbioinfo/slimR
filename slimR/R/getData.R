@@ -1,28 +1,71 @@
 #' createDB
 #'
-#' Given a uniprot accession, extract and process all available sequence
-#' features including:
-#' 1. Fasta sequences
-#' 2. Disorder predictions using IUPred
-#' 3. Uniprot feature files downloaded in gff format
-#' 4. Uniprot variants including disease-causing and polymorphic substitutions
-#' 5. Short linear motifs - all substrings matching all available patterns
-#' 6. SLiM Changes - The collection of changes in the proteins' SLiM content
-#' when variants at 4) are applied to the sequence
+#' Wrapper function to run extractProteinData in multiple nodes for for multiple
+#' inputs and create a single database collecting all available information into
+#' a single R object
 #'
-#' @param uniprotAccessions A vector of uniprot accessions e.g. c('P04637',
-#'   'P06300')
+#' @param uniprotAccessions Vector of uniprot accessions (e.g. c('P04637',
+#'   'P11166'))
+#' @param workingDirectory Path to folder where the database should be created
+#' @param nodeN Number of cores to run the database generation.
+#' @param overwrite TRUE/FALSE (default: FALSE) if the database is populated in
+#'   an existing folder, should the previously generated data be overwritten? Set
+#'   to TRUE to update/overwrite existing files/folders
+#' @param saveIndividualRDS TRUE/FALSE (default: FALSE) Boolean value to decide if
+#' the extracted data for each protein should be saved individually to separate
+#' RDS files.
+#' @importFrom parallel makeCluster
+#' @importFrom doParallel registerDoParallel
+#' @export
+createDB <- function(iupredPath = '/Users/buyar/Desktop/work/tools/iupred',
+                     uniprotAccessions,
+                     workingDirectory = getwd(),
+                     nodeN = 1,
+                     overwrite = FALSE) {
+  cl <- parallel::makeCluster(nodeN)
+  doParallel::registerDoParallel(cl)
+
+  database <- foreach (i=1:length(uniprotAccessions),
+                       .combine = c,
+                       .packages = c('GenomicRanges')) %dopar% {
+    slimR::extractProteinData(iupredPath = iupredPath,
+                                    uni = uniprotAccessions[i],
+                                    workingDirectory = workingDirectory,
+                                    overwrite = overwrite,
+                                    saveAsRDS = TRUE)
+    uniprotAccessions[i]
+  }
+  stopCluster(cl)
+}
+
+#' extractProteinData
+#'
+#' Given a uniprot accession, extract and process all available sequence
+#' features including: 1. Fasta sequences 2. Disorder predictions using IUPred
+#' 3. Uniprot feature files downloaded in gff format 4. Uniprot variants
+#' including disease-causing and polymorphic substitutions 5. Short linear
+#' motifs - all substrings matching all available patterns 6. SLiM Changes - The
+#' collection of changes in the proteins' SLiM content when variants at 4) are
+#' applied to the sequence
+#'
+#' @param iupredPath The path to the IUPred Disorder score prediction tool
+#'   executable
+#' @param uni The uniprot accession of the protein for which to extract data
+#'   (e.g. P04637)
 #' @param workingDirectory The name of the folder to write downloaded/processed
 #'   files and RDS objects
 #' @param overwrite TRUE/FALSE (default: FALSE). Boolean to decide if downloaded
 #'   files should overwrite existing files
-#' @return A list object with variable data types
-#'   directory
+#' @param saveAsRDS TRUE/FALSE (default: FALSE). Boolean to decide if all
+#'   extracted data should be saved as an RDS file in the working directory
+#'   under folder named 'RDS'
+#' @return A list object with variable data types directory
 #' @export
-createDB <- function (iupredPath = '/Users/buyar/Desktop/work/tools/iupred',
+extractProteinData <- function (iupredPath,
                       uni,
                       workingDirectory = getwd(),
-                      overwrite = FALSE) {
+                      overwrite = FALSE,
+                      saveAsRDS = FALSE) {
 
   setwd(dir = workingDirectory)
   variants <- getHumSavar()
@@ -38,18 +81,19 @@ createDB <- function (iupredPath = '/Users/buyar/Desktop/work/tools/iupred',
                        overwrite = overwrite)
 
 
-  db <- list('sequence' = NA, 'iupredScore' = NA, 'diseaseVars' = NA, 'polymorphicVars' = NA,
-             'uniprotFeatures' = NA, 'slims' = NA,
+  db <- list('sequence' = NA, 'iupredScore' = NA, 'diseaseVars' = NA,
+             'polymorphicVars' = NA, 'uniprotFeatures' = NA, 'slims' = NA,
              'slimChangesDisease' = NA, 'slimChangesPolymorphism' = NA)
-
 
   fastaFile <- file.path(getwd(), 'fasta', paste0(uni, '.fasta'))
 
   if (file.exists(fastaFile)) {
-    sequence <- paste(Biostrings::readAAStringSet(filepath = fastaFile, format = 'fasta'))
+    sequence <- paste(Biostrings::readAAStringSet(filepath = fastaFile,
+                                                  format = 'fasta'))
 
     if(length(sequence) == 0){
-      warning("Fasta file for ",uni,"is empty. Stopped collecting other features for this id
+      warning("Fasta file for ",uni,"is empty.
+      Stopped collecting other features for this id.
               Check file:",fastaFile)
       return(0)
     } else {
@@ -68,7 +112,8 @@ createDB <- function (iupredPath = '/Users/buyar/Desktop/work/tools/iupred',
       }
     }
 
-    slims <- slimR::searchSLiMs(sequence = sequence, motifRegex = slimR::motifRegex)
+    slims <- slimR::searchSLiMs(sequence = sequence,
+                                motifRegex = slimR::motifRegex)
     if(length(slims) > 0){
       db$slims <- slims
     }
@@ -104,6 +149,23 @@ createDB <- function (iupredPath = '/Users/buyar/Desktop/work/tools/iupred',
       warning("GFF file for ",uni,"seems to be empty or could not be imported
               Check file:",gffFile)
       db$uniprotFeatures <- NA
+    }
+  }
+
+
+  if(saveAsRDS == TRUE) {
+
+    if(!dir.exists('RDS')) {
+      dir.create('RDS')
+    }
+
+    rdsFile <- file.path(workingDirectory, 'RDS', paste0(uni, '.RDS'))
+    if(file.exists(rdsFile)) {
+      if(overwrite == TRUE) {
+        saveRDS(object = db, file = rdsFile)
+      }
+    } else {
+      saveRDS(object = db, file = rdsFile)
     }
   }
 

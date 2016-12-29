@@ -4,32 +4,29 @@
 \alias{createDB}
 \title{createDB}
 \usage{
-createDB(iupredPath = "/Users/buyar/Desktop/work/tools/iupred", uni,
-  workingDirectory = getwd(), overwrite = FALSE)
+createDB(iupredPath = "/Users/buyar/Desktop/work/tools/iupred",
+  uniprotAccessions, workingDirectory = getwd(), nodeN = 1,
+  overwrite = FALSE)
 }
 \arguments{
-\item{workingDirectory}{The name of the folder to write downloaded/processed
-files and RDS objects}
+\item{uniprotAccessions}{Vector of uniprot accessions (e.g. c('P04637',
+'P11166'))}
 
-\item{overwrite}{TRUE/FALSE (default: FALSE). Boolean to decide if downloaded
-files should overwrite existing files}
+\item{workingDirectory}{Path to folder where the database should be created}
 
-\item{uniprotAccessions}{A vector of uniprot accessions e.g. c('P04637',
-'P06300')}
-}
-\value{
-A list object with variable data types
-  directory
+\item{nodeN}{Number of cores to run the database generation.}
+
+\item{overwrite}{TRUE/FALSE (default: FALSE) if the database is populated in
+an existing folder, should the previously generated data be overwritten? Set
+to TRUE to update/overwrite existing files/folders}
+
+\item{saveIndividualRDS}{TRUE/FALSE (default: FALSE) Boolean value to decide if
+the extracted data for each protein should be saved individually to separate
+RDS files.}
 }
 \description{
-Given a uniprot accession, extract and process all available sequence
-features including:
-1. Fasta sequences
-2. Disorder predictions using IUPred
-3. Uniprot feature files downloaded in gff format
-4. Uniprot variants including disease-causing and polymorphic substitutions
-5. Short linear motifs - all substrings matching all available patterns
-6. SLiM Changes - The collection of changes in the proteins' SLiM content
-when variants at 4) are applied to the sequence
+Wrapper function to run extractProteinData in multiple nodes for for multiple
+inputs and create a single database collecting all available information into
+a single R object
 }
 

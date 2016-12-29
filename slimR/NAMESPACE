@@ -2,6 +2,7 @@
 
 export(createDB)
 export(downloadUniprotFiles)
+export(extractProteinData)
 export(findMotifChanges)
 export(findMotifChangesBulk)
 export(getElmClasses)
@@ -13,3 +14,5 @@ export(parseMutation)
 export(parseUniprotHumanVariationData)
 export(runIUPred)
 export(searchSLiMs)
+importFrom(doParallel,registerDoParallel)
+importFrom(parallel,makeCluster)
