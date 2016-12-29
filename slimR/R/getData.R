@@ -197,7 +197,7 @@ getHumSavar <- function () {
   variantFile <- file.path(getwd(), 'humsavar.txt')
   if (!file.exists(variantFile)) {
     download.file(url = 'www.uniprot.org/docs/humsavar.txt',
-                  destfile = variantFile)
+                  destfile = variantFile, method = "curl")
   } else {
       warning("humsavar.txt exists at current folder",getwd(),
               ", a new one won't be downloaded. Remove the existing
