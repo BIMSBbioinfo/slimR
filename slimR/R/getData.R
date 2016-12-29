@@ -181,7 +181,7 @@ parseMutation <- function (mutations) {
   mutations <- gsub(pattern = '^p.', replacement = '', x = mutations)
   pos <- stringr::str_match(pattern = '\\d+', string = mutations)
   df <- data.frame(do.call(rbind, stringr::str_split(pattern = '\\d+', string = mutations)))
-  df$pos <- pos
+  df$pos <- as.numeric(pos)
   colnames(df) <- c('wtAA', 'mutAA', 'pos')
   df$wtAA <- slimR::aaTable$oneLetterCode[match(df$wtAA, slimR::aaTable$threeLetterCode)]
   df$mutAA <- slimR::aaTable$oneLetterCode[match(df$mutAA, slimR::aaTable$threeLetterCode)]
