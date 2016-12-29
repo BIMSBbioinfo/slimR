@@ -6,7 +6,11 @@ Author: Who wrote it
 Maintainer: Who to complain to <yourfault@somewhere.net>
 Description: More about what it does (maybe more than one line)
 Depends: 
+<<<<<<< HEAD
     doParallel,
+=======
+    doParallel
+>>>>>>> afcbd903773be8a08fdabe44802e28eb17c681ce
     GenomicRanges
 License: What license is it under?
 LazyData: TRUE
