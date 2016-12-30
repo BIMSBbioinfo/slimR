@@ -18,9 +18,17 @@
 #' @param overwrite TRUE/FALSE (default: FALSE) Boolean value to decide if the
 #'   previously downloaded or processed files be overwritten? (Applies to all
 #'   files except objects saved as RDS)
-#' @param updateDB TRUE/FALSE (default: TRUE) Boolean to decide if pre-existing
-#'   RDS files generated with this function should be updated/overwritten at
-#'   each run.
+#' @param updateFasta TRUE/FALSE (default: TRUE) Boolean to decide if fasta
+#' download module should be run to update fasta.RDS
+#' @param updateGff TRUE/FALSE (default: TRUE) Boolean to decide if
+#' gff download module should be run to update gff.RDS
+#' @param updateIupred TRUE/FALSE (default: TRUE) Boolean to decide if
+#' disorder prediction should be run to update iupred.RDS
+#' @param updateSlims TRUE/FALSE (default: TRUE) Boolean to decide if
+#' motif prediction should be run to update slims.RDS
+#' @param updateSlimChanges TRUE/FALSE (default: TRUE) Boolean to
+#' decide if motif changes should be calculated to update
+#' slimChanges.RDS files for variants
 #' @importFrom parallel makeCluster
 #' @importFrom doParallel registerDoParallel
 #' @export
@@ -30,7 +38,11 @@ createDB <- function(uniprotAccessions,
                      workingDirectory = getwd(),
                      nodeN = 1,
                      overwrite = FALSE,
-                     updateDB = TRUE) {
+                     updateFasta = TRUE,
+                     updateGff = TRUE,
+                     updateIupred = TRUE,
+                     updateSlims = TRUE,
+                     updateSlimChanges) {
 
   if(!dir.exists(workingDirectory)){
     dir.create(workingDirectory)
@@ -38,58 +50,76 @@ createDB <- function(uniprotAccessions,
 
   setwd(workingDirectory)
 
+  if((updateSlims == TRUE | updateSlimChanges == TRUE)
+     & updateFasta == FALSE & !file.exists('./slimDB/fasta.RDS')){
+    stop("./slimDB/fasta.RDS file is missing and updateFasta is set to FALSE.
+         In this condition, updateSlims or updateSlimChanges cannot work.
+         Please set updateFasta to TRUE and re-run.
+         Or provide a fasta.RDS file in the folder slimDB")
+  }
+
   if(!dir.exists('slimDB')) {
     dir.create('slimDB')
   }
 
-  fasta <- downloadUniprotFiles(uniprotAccessions = uniprotAccessions,
-                                outDir = workingDirectory,
-                                format = 'fasta',
-                                overwrite = overwrite,
-                                nodeN = nodeN)
-  if(updateDB == TRUE) {
+  if (updateFasta == TRUE) {
+    fasta <- downloadUniprotFiles(uniprotAccessions = uniprotAccessions,
+                                  outDir = workingDirectory,
+                                  format = 'fasta',
+                                  overwrite = overwrite,
+                                  nodeN = nodeN)
     saveRDS(object = fasta, file = './slimDB/fasta.RDS')
   }
 
-  gff <- downloadUniprotFiles(uniprotAccessions = uniprotAccessions,
-                              outDir = workingDirectory,
-                              format = 'gff',
-                              overwrite = overwrite,
-                              nodeN = nodeN)
-  #rm(gff)
-  if(updateDB == TRUE) {
+  if(updateGff == TRUE) {
+    gff <- downloadUniprotFiles(uniprotAccessions = uniprotAccessions,
+                                outDir = workingDirectory,
+                                format = 'gff',
+                                overwrite = overwrite,
+                                nodeN = nodeN)
     saveRDS(object = gff, file = './slimDB/gff.RDS')
+    rm(gff)
   }
 
-  ##Disorder prediction start##
-  fastaFiles <- dir(path = './fasta', pattern = '.fasta$', full.names = TRUE)
-  iupred <- runIUPred(iupredPath = '~/tools/iupred',
-                      fastaFiles = fastaFiles,
-                      overwrite = overwrite,
-                      nodeN = nodeN)
-  #  rm(iupred)
-  if(updateDB == TRUE) {
+  if(updateIupred == TRUE){
+    fastaFiles <- dir(path = './fasta', pattern = '.fasta$', full.names = TRUE)
+    ##TODO only pass fastaFiles which match uniprotAccessions
+    iupred <- runIUPred(iupredPath = iupredPath,
+                        fastaFiles = fastaFiles,
+                        overwrite = overwrite,
+                        nodeN = nodeN)
     saveRDS(object = iupred, file = './slimDB/iupred.RDS')
+    rm(iupred)
   }
-  ##Disorder prediction end##
 
-  # The rest of the datasets are not necessary to run
-  # if updateDB is not set to TRUE
-  if(updateDB == TRUE) {
-    ##Motif scanning start#####
+  if(updateSlims == TRUE) {
     cl <- parallel::makeCluster(nodeN)
     doParallel::registerDoParallel(cl)
 
+    fasta <- readRDS('./slimDB/fasta.RDS')
+
     slims <- foreach (i=1:length(fasta), .inorder = TRUE) %dopar% {
-      result <- slimR::searchSLiMs(sequence = fasta[[i]],
-                                   motifRegex = slimR::motifRegex)
+      sequence <- fasta[[i]]
+      if(!is.na(sequence)) {
+        result <- slimR::searchSLiMs(sequence = sequence,
+                                     motifRegex = slimR::motifRegex)
+        if(is.null(result)){
+          result <- 'No slims found'
+        }
+      } else {
+        result <- 'Fasta file empty'
+      }
+      result
     }
     names(slims) <- names(fasta)
     saveRDS(object = slims, file = './slimDB/slims.RDS')
     rm(slims)
     stopCluster(cl)
-    ##Motif scanning start#####
+  }
 
+  if(updateSlimChanges == TRUE) {
+
+    fasta <- readRDS('./slimDB/fasta.RDS')
 
     ##Find Motif Changes by Mutations start###
     variants <- subset(x = as.data.frame(getHumSavar()),
@@ -101,25 +131,24 @@ createDB <- function(uniprotAccessions,
     diseaseVars <- unique(variants[variants$variant == 'Disease',])
     polymorphisms <- unique(variants[variants$variant == 'Polymorphism',])
 
-    ##disease mutations###
-
     slimChangesDisease <- slimR::findMotifChangesMulti(
       sequences = fasta,
       variants = diseaseVars,
       motifRegex = slimR::motifRegex,
       nodeN = nodeN)
 
-    saveRDS(object = slimChangesDisease, file = './slimDB/slimChangesDisease.RDS')
+    saveRDS(object = slimChangesDisease,
+            file = './slimDB/slimChangesDisease.RDS')
     rm(slimChangesDisease)
 
-    ## polymorphisms##
-    slimChangesPolymorphisms <- slimR::findMotifChangesMulti(sequences = fasta,
-                                                             variants = polymorphisms,
-                                                             motifRegex = slimR::motifRegex,
-                                                             nodeN = nodeN)
-    saveRDS(object = slimChangesPolymorphisms, file = './slimDB/slimChangesPolymorphisms.RDS')
-    #rm(slimChangesPolymorphisms)
-    ##Find Motif Changes by Mutations end###
+    slimChangesPolymorphisms <- slimR::findMotifChangesMulti(
+      sequences = fasta,
+      variants = polymorphisms,
+      motifRegex = slimR::motifRegex,
+      nodeN = nodeN)
+    saveRDS(object = slimChangesPolymorphisms,
+            file = './slimDB/slimChangesPolymorphisms.RDS')
+    rm(slimChangesPolymorphisms)
   }
 }
 
@@ -134,7 +163,7 @@ parseMutation <- function (mutations) {
   df <- data.frame(do.call(rbind, stringr::str_split(pattern = '\\d+', string = mutations)))
   df$pos <- as.numeric(pos)
   colnames(df) <- c('wtAA', 'mutAA', 'pos')
-  df$wtAA <- slimR::aaTable$oneLetterCode[match(df$wtAA, slimR::aaTable$threeLetterCode)]
+  df$wtAA <- slimR::aaTable$oneLetterCode[match(df$wtAA, slimR::aaTable$threeLetterCode, nomatch = )]
   df$mutAA <- slimR::aaTable$oneLetterCode[match(df$mutAA, slimR::aaTable$threeLetterCode)]
   return(df)
 }
@@ -179,6 +208,11 @@ getHumSavar <- function () {
     parsedMut <- parseMutation(mutations = mut$change)
 
     mut <- cbind(mut, parsedMut)
+
+    #some of the mutations may not have been parsed correctly (due to errors in
+    #humsavar file). So, some amino acids may have NA values after conversion.
+    #such entries are althogether deleted in the merged data frmae)
+    mut <- mut[!(is.na(mut$wtAA) | is.na(mut$mutAA) | is.na(mut$pos)),]
 
     mut <- GenomicRanges::makeGRangesFromDataFrame(df = mut,
                                                    keep.extra.columns = TRUE,
@@ -412,23 +446,21 @@ downloadUniprotFiles <- function (uniprotAccessions,
     fileUrl <- paste0("http://www.uniprot.org/uniprot/", id, ".", format)
     fileOut <- file.path(subOutDir, paste0(id, '.', format))
 
-    if (!file.exists(fileOut) | overwrite == TRUE) {
-      download.file(url = fileUrl, destfile = fileOut, quiet = TRUE, mode = 'w')
+    downloadFlag <- 0
+    if (!file.exists(fileOut) | overwrite == TRUE | (file.exists(fileOut) & file.size(fileOut) == 0)) {
+      downloadFlag <- download.file(url = fileUrl, destfile = fileOut, quiet = TRUE, mode = 'w', method = 'wget')
     }
 
-    if(file.exists(fileOut)) {
+    result <- NA
+    if(downloadFlag == 0 & file.size(fileOut) > 0) {
       if(format == 'fasta') {
-        result <- paste(Biostrings::readAAStringSet(filepath = fileOut,
+          result <- paste(Biostrings::readAAStringSet(filepath = fileOut,
                                                       format = 'fasta'))
-      } else if (format == 'gff') {
-        result <- rtracklayer::import.gff(con = fileOut)
-      } else if (format == 'txt') {
-        result <- readLines(con = fileOut)
-      } else {
-        result <- NA
-      }
-    } else {
-      result <- NA
+        } else if (format == 'gff') {
+          result <- rtracklayer::import.gff(con = fileOut)
+        } else if (format == 'txt') {
+          result <- readLines(con = fileOut)
+        }
     }
     result
   }

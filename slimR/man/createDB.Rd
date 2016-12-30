@@ -6,7 +6,8 @@
 \usage{
 createDB(uniprotAccessions, iupredPath = "/home/buyar/tools/iupred",
   motifRegex = slimR::motifRegex, workingDirectory = getwd(), nodeN = 1,
-  overwrite = FALSE, updateDB = TRUE)
+  overwrite = FALSE, updateFasta = TRUE, updateGff = TRUE,
+  updateIupred = TRUE, updateSlims = TRUE, updateSlimChanges)
 }
 \arguments{
 \item{uniprotAccessions}{Vector of uniprot accessions (e.g. c('P04637',
@@ -20,9 +21,21 @@ createDB(uniprotAccessions, iupredPath = "/home/buyar/tools/iupred",
 previously downloaded or processed files be overwritten? (Applies to all
 files except objects saved as RDS)}
 
-\item{updateDB}{TRUE/FALSE (default: TRUE) Boolean to decide if pre-existing
-RDS files generated with this function should be updated/overwritten at
-each run.}
+\item{updateFasta}{TRUE/FALSE (default: TRUE) Boolean to decide if fasta
+download module should be run to update fasta.RDS}
+
+\item{updateGff}{TRUE/FALSE (default: TRUE) Boolean to decide if
+gff download module should be run to update gff.RDS}
+
+\item{updateIupred}{TRUE/FALSE (default: TRUE) Boolean to decide if
+disorder prediction should be run to update iupred.RDS}
+
+\item{updateSlims}{TRUE/FALSE (default: TRUE) Boolean to decide if
+motif prediction should be run to update slims.RDS}
+
+\item{updateSlimChanges}{TRUE/FALSE (default: TRUE) Boolean to
+decide if motif changes should be calculated to update
+slimChanges.RDS files for variants}
 }
 \description{
 Given a vectore of uniProt accessions, extract and process all available
