@@ -2,9 +2,8 @@
 
 export(createDB)
 export(downloadUniprotFiles)
-export(extractProteinData)
 export(findMotifChanges)
-export(findMotifChangesBulk)
+export(findMotifChangesMulti)
 export(getElmClasses)
 export(getElmInstances)
 export(getHumSavar)

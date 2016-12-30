@@ -2,7 +2,7 @@
 % Please edit documentation in R/motifAnalysis.R
 \name{searchSLiMs}
 \alias{searchSLiMs}
-\title{searchMotifs}
+\title{searchSLiMs}
 \usage{
 searchSLiMs(sequence, motifRegex)
 }
@@ -13,7 +13,9 @@ searchSLiMs(sequence, motifRegex)
 and each list item has one ELM regex}
 }
 \value{
-A list of data.frame objects.
+A vector of motif hits with the syntax:
+<MotifIdentifier>:<start position in sequence>:<end position in sequence>
+e.g.: TRG_ENDOCYTIC_2:333:340
 }
 \description{
 Using regular expressions of SLiMs, find all matches of given SLiM patterns

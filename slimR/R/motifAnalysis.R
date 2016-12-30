@@ -1,25 +1,31 @@
-#' searchMotifs
+#' searchSLiMs
 #'
 #' Using regular expressions of SLiMs, find all matches of given SLiM patterns
 #' in a given sequence
 #'
 #' @param sequence Protein sequence using amino acid alphabet
 #' @param motifRegex A list object where names of the list are ELM identifiers
-#'  and each list item has one ELM regex
+#'   and each list item has one ELM regex
 #' @examples
 #' data("glutFasta")
 #' motifRegex <- list('TRG_ENDOCYTIC_2' = 'Y..[LMVIF]')
 #' searchSLiMs(paste(glutFasta), motifRegex)
-#' @return A list of data.frame objects.
+#' @return A vector of motif hits with the syntax:
+#' <MotifIdentifier>:<start position in sequence>:<end position in sequence>
+#' e.g.: TRG_ENDOCYTIC_2:333:340
 #' @export
 searchSLiMs <- function(sequence, motifRegex) {
   hits <- lapply(X = motifRegex, function(x) {locateAllRegex(sequence = sequence,
                                                              pattern = x)})
   hits <- hits[lapply(hits, nrow)  > 0]
-  unlist(lapply(X = c(1:length(names(hits))),
-                FUN = function(x) {paste0(names(hits)[x],
-                                          ':', hits[[x]]$start,
-                                          ':', hits[[x]]$end)}))
+  if (length(hits) > 0) {
+    unlist(lapply(X = c(1:length(names(hits))),
+                  FUN = function(x) {paste0(names(hits)[x],
+                                            ':', hits[[x]]$start,
+                                            ':', hits[[x]]$end)}))
+  } else {
+    return(c())
+  }
 }
 
 #' locateAllRegex
@@ -87,7 +93,12 @@ mutateSequence <- function (sequence, pos, wtAA, mutAA) {
 #'                       variants = glutMutations,
 #'                      motifRegex = motifRegex)
 #' @export
-findMotifChanges <- function(sequence, variants, motifRegex) {
+findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex) {
+
+  if(sum(c("wtAA", "mutAA", "pos") %in% colnames(variants)) != 3) {
+    stop("Seems like the variants data.frame does not contain all of the required columns:
+         wtAA, mutAA, and pos")
+  }
 
   #find SLiMs in the wild-type sequence
   wtMotifs <- searchSLiMs(sequence = sequence, motifRegex = motifRegex)
@@ -139,61 +150,66 @@ findMotifChanges <- function(sequence, variants, motifRegex) {
                                      paste(wtSeq[change$SLiM_start[x]:change$SLiM_end[x]],
                                            collapse = '')})
     return(change)
+  } else {
+    return(0)
   }
 }
 
-#' findMotifChangesBulk
+#' findMotifChangesMulti
 #'
-#' Find out which SLiMs are gained or lost (no longer matching the regex
-#' pattern) via point amino acid substitutions in protein sequences
+#' A wrapper function that runs findMotifChanges function for multiple inputs
+#' using multiple cores
 #'
-#' @param variants A Granges object of variants parsed from Humsavar
-#' using getHumSavar() function or a subset of it with the same structure
-#'   consisting of minimum two meta-data columns: 1.wtAA,
-#'   2.mutAA, wtAA is the wild-type amino acid (one letter code) in the
+#' @param sequences List of strings where the strings are amino-acid sequences
+#'   and the list names are uniprot accessions
+#' @param motifRegex List of slim regular expressions. By default, the built-in
+#'   slimR::motifRegex from the ELM database is used.
+#' @param variants A data.frame consisting of minimum four columns: 1.
+#'   uniprotAccession 2.wtAA, 3.mutAA, 4.pos where pos is the mutation position
+#'   in the sequence, wtAA is the wild-type amino acid (one letter code) in the
 #'   sequence and mutAA is the mutant amino acid (one letter code).
-#' @param uniprotDataDir The folder that is used to download/store uniprot
-#' data files
+#' @param nodeN Number of cores needed to run the analysis (default: 1)
+#' @return List of data.frame objects. One data.frame per each uniprot accession
+#' @examples
+#' sequences <- downloadUniprotFiles(uniprotAccessions = c('P04637', 'P11166'),
+#'                          format = 'fasta', overwrite = 'FALSE', nodeN = 2)
+#' variants <- slimR::glutMutations
+#' motifRegex <- list('mymotif' = '.ABSDBASDBAS.')
+#' motifChanges <- findMotifChangesMulti(sequences = sequences,
+#'                                      variants = variants,
+#'                                      motifRegex = motifRegex,
+#'                                      nodeN = 1)
 #' @export
-findMotifChangesBulk <- function (variants, uniprotDataDir) {
+findMotifChangesMulti <- function(sequences,
+                                  variants,
+                                  motifRegex = slimR::motifRegex,
+                                  nodeN = 1) {
 
-  ptm <- proc.time()
-
-  motifChanges <- list()
-
-  #load regular expressions for motifs
-  data("motifRegex")
-
-  uniprotAccessions <- unique(as.vector(seqnames(variants)))
-  downloadUniprotFiles(uniprotAccessions = uniprotAccessions, outDir = uniprotDataDir, format = 'fasta')
-
-  pb <- txtProgressBar(min = 0, max = length(uniprotAccessions), style = 3)
-
-  for (i in 1:length(uniprotAccessions)) {
-    setTxtProgressBar(pb, i)
-    uniAcc <- uniprotAccessions[i]
-    fastaFile <- file.path(uniprotDataDir, 'fasta', paste0(uniAcc, '.fasta'))
-
-    if(file.exists(fastaFile)) {
-      sequence <- paste(Biostrings::readAAStringSet(filepath = fastaFile, format = 'fasta'))
-
-      myVariants <- variants[seqnames(variants) == uniAcc]
-
-      df <- data.frame('wtAA' = as.vector(myVariants$wtAA),
-                       'mutAA' = as.vector(myVariants$mutAA),
-                       'pos' = start(myVariants))
-
-      changes <- findMotifChanges(sequence = sequence, variants = df, motifRegex = motifRegex)
-      if (!is.null(changes)) {
-        changes$uniprotAcc <- uniAcc
-        motifChanges[[length(motifChanges)+1]] <- changes
-        names(motifChanges)[length(motifChanges)] <- uniAcc
-      }
-    }
+  if(sum(c("uniprotAccession", "wtAA", "mutAA", "pos") %in% colnames(variants)) != 4) {
+    stop("Seems like the variants data.frame does not contain all of the required columns:
+         uniprotAccession, wtAA, mutAA, and pos")
   }
 
-  close(pb)
-  proc.time() - ptm
+  cl <- parallel::makeCluster(nodeN)
+  doParallel::registerDoParallel(cl)
+
+  motifChanges <- foreach (i=1:length(sequences), .inorder = TRUE) %dopar% {
+    uni <- names(sequences)[i]
+    if (uni %in% variants$uniprotAccession) {
+      result <- findMotifChanges(sequence = sequences[[i]],
+                                  variants = variants[variants$uniprotAccession == uni,],
+                                  motifRegex = motifRegex
+                                  )
+      if(result == 0) {
+        result <- 'No motif changes'
+      }
+    } else {
+      result <- 'No variants found'
+    }
+    result
+  }
+  names(motifChanges) <- names(sequences)
+
+  stopCluster(cl)
   return(motifChanges)
 }
-

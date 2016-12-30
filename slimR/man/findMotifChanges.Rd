@@ -4,7 +4,7 @@
 \alias{findMotifChanges}
 \title{findMotifChanges}
 \usage{
-findMotifChanges(sequence, variants, motifRegex)
+findMotifChanges(sequence, variants, motifRegex = slimR::motifRegex)
 }
 \arguments{
 \item{sequence}{A character string of amino acid sequence}
