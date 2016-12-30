@@ -5,7 +5,7 @@
 \title{downloadUniprotFiles}
 \usage{
 downloadUniprotFiles(uniprotAccessions, outDir = getwd(), format,
-  overwrite = FALSE)
+  overwrite = FALSE, nodeN = 1)
 }
 \arguments{
 \item{uniprotAccessions}{A vector of uniprot accession numbers}
@@ -17,6 +17,9 @@ and txt.}
 
 \item{overwrite}{TRUE or FALSE (default). Whether the existing files should
 be overwritten with a new download.}
+
+\item{nodeN}{default: 1. Positive integer for the number of parallel cores to use
+for downloading and processing the files}
 }
 \description{
 Given a uniprot accession number and a file format, download the annotation

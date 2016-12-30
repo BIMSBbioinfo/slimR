@@ -4,9 +4,9 @@
 \alias{createDB}
 \title{createDB}
 \usage{
-createDB(iupredPath = "/Users/buyar/Desktop/work/tools/iupred",
-  uniprotAccessions, workingDirectory = getwd(), nodeN = 1,
-  overwrite = FALSE)
+createDB(uniprotAccessions, iupredPath = "/home/buyar/tools/iupred",
+  motifRegex = slimR::motifRegex, workingDirectory = getwd(), nodeN = 1,
+  overwrite = FALSE, updateDB = TRUE)
 }
 \arguments{
 \item{uniprotAccessions}{Vector of uniprot accessions (e.g. c('P04637',
@@ -16,17 +16,24 @@ createDB(iupredPath = "/Users/buyar/Desktop/work/tools/iupred",
 
 \item{nodeN}{Number of cores to run the database generation.}
 
-\item{overwrite}{TRUE/FALSE (default: FALSE) if the database is populated in
-an existing folder, should the previously generated data be overwritten? Set
-to TRUE to update/overwrite existing files/folders}
+\item{overwrite}{TRUE/FALSE (default: FALSE) Boolean value to decide if the
+previously downloaded or processed files be overwritten? (Applies to all
+files except objects saved as RDS)}
 
-\item{saveIndividualRDS}{TRUE/FALSE (default: FALSE) Boolean value to decide if
-the extracted data for each protein should be saved individually to separate
-RDS files.}
+\item{updateDB}{TRUE/FALSE (default: TRUE) Boolean to decide if pre-existing
+RDS files generated with this function should be updated/overwritten at
+each run.}
 }
 \description{
-Wrapper function to run extractProteinData in multiple nodes for for multiple
-inputs and create a single database collecting all available information into
-a single R object
+Given a vectore of uniProt accessions, extract and process all available
+sequence features and save the resulting objects in folders and RDS objects
+for: 1. Fasta sequences 2. Disorder predictions using IUPred 3. Uniprot
+feature files downloaded in gff format 4. Uniprot variants including
+disease-causing and polymorphic substitutions 5. Short linear motifs - all
+substrings matching all available patterns 6. SLiM Changes due to disease
+causing mutations - The collection of changes in the proteins' SLiM content
+when diesase-causing variants at 4) are applied to the sequence 7. SLiM
+Changes due to polymorphisms - The collection of changes in the proteins'
+SLiM content when polymorphisms at 4) are applied to the sequence
 }
 

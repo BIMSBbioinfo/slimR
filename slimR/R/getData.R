@@ -1,176 +1,127 @@
 #' createDB
 #'
-#' Wrapper function to run extractProteinData in multiple nodes for for multiple
-#' inputs and create a single database collecting all available information into
-#' a single R object
+#' Given a vectore of uniProt accessions, extract and process all available
+#' sequence features and save the resulting objects in folders and RDS objects
+#' for: 1. Fasta sequences 2. Disorder predictions using IUPred 3. Uniprot
+#' feature files downloaded in gff format 4. Uniprot variants including
+#' disease-causing and polymorphic substitutions 5. Short linear motifs - all
+#' substrings matching all available patterns 6. SLiM Changes due to disease
+#' causing mutations - The collection of changes in the proteins' SLiM content
+#' when diesase-causing variants at 4) are applied to the sequence 7. SLiM
+#' Changes due to polymorphisms - The collection of changes in the proteins'
+#' SLiM content when polymorphisms at 4) are applied to the sequence
 #'
 #' @param uniprotAccessions Vector of uniprot accessions (e.g. c('P04637',
 #'   'P11166'))
 #' @param workingDirectory Path to folder where the database should be created
 #' @param nodeN Number of cores to run the database generation.
-#' @param overwrite TRUE/FALSE (default: FALSE) if the database is populated in
-#'   an existing folder, should the previously generated data be overwritten? Set
-#'   to TRUE to update/overwrite existing files/folders
-#' @param saveIndividualRDS TRUE/FALSE (default: FALSE) Boolean value to decide if
-#' the extracted data for each protein should be saved individually to separate
-#' RDS files.
+#' @param overwrite TRUE/FALSE (default: FALSE) Boolean value to decide if the
+#'   previously downloaded or processed files be overwritten? (Applies to all
+#'   files except objects saved as RDS)
+#' @param updateDB TRUE/FALSE (default: TRUE) Boolean to decide if pre-existing
+#'   RDS files generated with this function should be updated/overwritten at
+#'   each run.
 #' @importFrom parallel makeCluster
 #' @importFrom doParallel registerDoParallel
 #' @export
-createDB <- function(iupredPath = '/Users/buyar/Desktop/work/tools/iupred',
-                     uniprotAccessions,
+createDB <- function(uniprotAccessions,
+                     iupredPath = '/home/buyar/tools/iupred',
+                     motifRegex = slimR::motifRegex,
                      workingDirectory = getwd(),
                      nodeN = 1,
-                     overwrite = FALSE) {
-  cl <- parallel::makeCluster(nodeN)
-  doParallel::registerDoParallel(cl)
+                     overwrite = FALSE,
+                     updateDB = TRUE) {
 
-  database <- foreach (i=1:length(uniprotAccessions),
-                       .combine = c,
-                       .packages = c('GenomicRanges')) %dopar% {
-    slimR::extractProteinData(iupredPath = iupredPath,
-                                    uni = uniprotAccessions[i],
-                                    workingDirectory = workingDirectory,
-                                    overwrite = overwrite,
-                                    saveAsRDS = TRUE)
-    uniprotAccessions[i]
+  if(!dir.exists(workingDirectory)){
+    dir.create(workingDirectory)
   }
-  stopCluster(cl)
+
+  setwd(workingDirectory)
+
+  if(!dir.exists('slimDB')) {
+    dir.create('slimDB')
+  }
+
+  fasta <- downloadUniprotFiles(uniprotAccessions = uniprotAccessions,
+                                outDir = workingDirectory,
+                                format = 'fasta',
+                                overwrite = overwrite,
+                                nodeN = nodeN)
+  if(updateDB == TRUE) {
+    saveRDS(object = fasta, file = './slimDB/fasta.RDS')
+  }
+
+  gff <- downloadUniprotFiles(uniprotAccessions = uniprotAccessions,
+                              outDir = workingDirectory,
+                              format = 'gff',
+                              overwrite = overwrite,
+                              nodeN = nodeN)
+  #rm(gff)
+  if(updateDB == TRUE) {
+    saveRDS(object = gff, file = './slimDB/gff.RDS')
+  }
+
+  ##Disorder prediction start##
+  fastaFiles <- dir(path = './fasta', pattern = '.fasta$', full.names = TRUE)
+  iupred <- runIUPred(iupredPath = '~/tools/iupred',
+                      fastaFiles = fastaFiles,
+                      overwrite = overwrite,
+                      nodeN = nodeN)
+  #  rm(iupred)
+  if(updateDB == TRUE) {
+    saveRDS(object = iupred, file = './slimDB/iupred.RDS')
+  }
+  ##Disorder prediction end##
+
+  # The rest of the datasets are not necessary to run
+  # if updateDB is not set to TRUE
+  if(updateDB == TRUE) {
+    ##Motif scanning start#####
+    cl <- parallel::makeCluster(nodeN)
+    doParallel::registerDoParallel(cl)
+
+    slims <- foreach (i=1:length(fasta), .inorder = TRUE) %dopar% {
+      result <- slimR::searchSLiMs(sequence = fasta[[i]],
+                                   motifRegex = slimR::motifRegex)
+    }
+    names(slims) <- names(fasta)
+    saveRDS(object = slims, file = './slimDB/slims.RDS')
+    rm(slims)
+    stopCluster(cl)
+    ##Motif scanning start#####
+
+
+    ##Find Motif Changes by Mutations start###
+    variants <- subset(x = as.data.frame(getHumSavar()),
+                       select = c('seqnames', 'start',
+                                  'wtAA', 'mutAA', 'variant'))
+    colnames(variants) <- c('uniprotAccession', 'pos',
+                            'wtAA', 'mutAA', 'variant')
+
+    diseaseVars <- unique(variants[variants$variant == 'Disease',])
+    polymorphisms <- unique(variants[variants$variant == 'Polymorphism',])
+
+    ##disease mutations###
+
+    slimChangesDisease <- slimR::findMotifChangesMulti(
+      sequences = fasta,
+      variants = diseaseVars,
+      motifRegex = slimR::motifRegex,
+      nodeN = nodeN)
+
+    saveRDS(object = slimChangesDisease, file = './slimDB/slimChangesDisease.RDS')
+    rm(slimChangesDisease)
+
+    ## polymorphisms##
+    slimChangesPolymorphisms <- slimR::findMotifChangesMulti(sequences = fasta,
+                                                             variants = polymorphisms,
+                                                             motifRegex = slimR::motifRegex,
+                                                             nodeN = nodeN)
+    saveRDS(object = slimChangesPolymorphisms, file = './slimDB/slimChangesPolymorphisms.RDS')
+    #rm(slimChangesPolymorphisms)
+    ##Find Motif Changes by Mutations end###
+  }
 }
-
-#' extractProteinData
-#'
-#' Given a uniprot accession, extract and process all available sequence
-#' features including: 1. Fasta sequences 2. Disorder predictions using IUPred
-#' 3. Uniprot feature files downloaded in gff format 4. Uniprot variants
-#' including disease-causing and polymorphic substitutions 5. Short linear
-#' motifs - all substrings matching all available patterns 6. SLiM Changes - The
-#' collection of changes in the proteins' SLiM content when variants at 4) are
-#' applied to the sequence
-#'
-#' @param iupredPath The path to the IUPred Disorder score prediction tool
-#'   executable
-#' @param uni The uniprot accession of the protein for which to extract data
-#'   (e.g. P04637)
-#' @param workingDirectory The name of the folder to write downloaded/processed
-#'   files and RDS objects
-#' @param overwrite TRUE/FALSE (default: FALSE). Boolean to decide if downloaded
-#'   files should overwrite existing files
-#' @param saveAsRDS TRUE/FALSE (default: FALSE). Boolean to decide if all
-#'   extracted data should be saved as an RDS file in the working directory
-#'   under folder named 'RDS'
-#' @return A list object with variable data types directory
-#' @export
-extractProteinData <- function (iupredPath,
-                      uni,
-                      workingDirectory = getwd(),
-                      overwrite = FALSE,
-                      saveAsRDS = FALSE) {
-
-  setwd(dir = workingDirectory)
-  variants <- getHumSavar()
-
-  variants <- variants[GenomicRanges::seqnames(variants) == uni,]
-
-  downloadUniprotFiles(uniprotAccessions = uni,
-                       format = 'fasta',
-                       overwrite = overwrite)
-
-  downloadUniprotFiles(uniprotAccessions = uni,
-                       format = 'gff',
-                       overwrite = overwrite)
-
-
-  db <- list('sequence' = NA, 'iupredScore' = NA, 'diseaseVars' = NA,
-             'polymorphicVars' = NA, 'uniprotFeatures' = NA, 'slims' = NA,
-             'slimChangesDisease' = NA, 'slimChangesPolymorphism' = NA)
-
-  fastaFile <- file.path(getwd(), 'fasta', paste0(uni, '.fasta'))
-
-  if (file.exists(fastaFile)) {
-    sequence <- paste(Biostrings::readAAStringSet(filepath = fastaFile,
-                                                  format = 'fasta'))
-
-    if(length(sequence) == 0){
-      warning("Fasta file for ",uni,"is empty.
-      Stopped collecting other features for this id.
-              Check file:",fastaFile)
-      return(0)
-    } else {
-      db$sequence <- sequence
-    }
-
-    iupredResults <- runIUPred(iupredPath = iupredPath,
-                               fastaFiles = c(fastaFile),
-                               overwrite = overwrite)
-
-    if(uni %in% names(iupredResults)) {
-      db$iupredScore <- iupredResults[[uni]]
-      if (nrow(db$iupredScore) == 0) {
-        warning("IUPred file for ",uni,"is empty.")
-        db$iupredScore = NA
-      }
-    }
-
-    slims <- slimR::searchSLiMs(sequence = sequence,
-                                motifRegex = slimR::motifRegex)
-    if(length(slims) > 0){
-      db$slims <- slims
-    }
-
-    db$diseaseVars <- variants[variants$variant == 'Disease',]
-    db$polymorphicVars <- variants[variants$variant == 'Polymorphism',]
-
-    if(length(db$diseaseVars) > 0){
-      db$slimChangesDisease <- slimR::findMotifChanges(
-        sequence = sequence,
-        variants = unique(
-          data.frame('wtAA' = db$diseaseVars$wtAA,
-                     'mutAA' = db$diseaseVars$mutAA,
-                     'pos' = GenomicRanges::start(db$diseaseVars))),
-        motifRegex = slimR::motifRegex)
-    }
-
-    if (length(db$polymorphicVars) > 0) {
-      db$slimChangesPolymorphism <- slimR::findMotifChanges(
-        sequence = sequence,
-        variants = unique(
-          data.frame('wtAA' = db$polymorphicVars$wtAA,
-                     'mutAA' = db$polymorphicVars$mutAA,
-                     'pos' = GenomicRanges::start(db$polymorphicVars))),
-        motifRegex = slimR::motifRegex)
-    }
-  }
-
-  gffFile <- file.path(getwd(), 'gff', paste0(uni, '.gff'))
-  if (file.exists(gffFile)) {
-    db$uniprotFeatures <- rtracklayer::import.gff(con = gffFile)
-    if(length(db$uniprotFeatures) == 0){
-      warning("GFF file for ",uni,"seems to be empty or could not be imported
-              Check file:",gffFile)
-      db$uniprotFeatures <- NA
-    }
-  }
-
-
-  if(saveAsRDS == TRUE) {
-
-    if(!dir.exists('RDS')) {
-      dir.create('RDS')
-    }
-
-    rdsFile <- file.path(workingDirectory, 'RDS', paste0(uni, '.RDS'))
-    if(file.exists(rdsFile)) {
-      if(overwrite == TRUE) {
-        saveRDS(object = db, file = rdsFile)
-      }
-    } else {
-      saveRDS(object = db, file = rdsFile)
-    }
-  }
-
-  return(db)
-  }
 
 #' parseMutation
 #'
@@ -337,10 +288,10 @@ getElmInstances <- function (query = '*',
 #' run IUPred tool to get disorder propensity scores of a given protein sequence
 #' in fasta format.
 #'
-#' run_IUPred.R: given a directory of fasta sequences of proteins; calculate
+#' Given a directory of fasta sequences of proteins; calculate
 #' per-base iupred disorder scores. IUPred source code can be dowloaded from
 #' here: http://iupred.enzim.hu/Downloads.php After unpacking the source code,
-#' cd to the src directory. Compile the code cc iupred.c -o iupred
+#' cd to the src directory. Compile the code with "cc iupred.c -o iupred"
 #'
 #' @param iupredPath The path to the folder containing the source code of the
 #'   IUPred tool
@@ -349,15 +300,17 @@ getElmInstances <- function (query = '*',
 #' @param outDir The location where the IUPred result files should be stored.
 #' @param overwrite TRUE or FALSE (default). Whether the IUPred results should
 #'   be overwritten
-#' @param returnResultsAsList TRUE (default) or FALSE. Whether the result file should be
-#'   parsed and returned as a list of data.frame objects
+#' @param nodeN default: 1. Positive integer for the number of parallel cores to use
+#' for downloading and processing the files
 #' @export
-runIUPred <- function (iupredPath, fastaFiles, outDir = getwd(), overwrite = FALSE,
+runIUPred <- function (iupredPath,
+                       fastaFiles,
+                       outDir = getwd(),
+                       overwrite = FALSE,
+                       nodeN = 1,
                        returnResultsAsList = TRUE) {
 
   iupredOutDir <- file.path(outDir, 'iupredResults')
-
-  iupredResultFiles <- c()
 
   if(!dir.exists(outDir)) {
     dir.create(outDir)
@@ -366,25 +319,30 @@ runIUPred <- function (iupredPath, fastaFiles, outDir = getwd(), overwrite = FAL
     dir.create(iupredOutDir)
   }
 
-  for (i in 1:length(fastaFiles)) {
-    fastaFile <- fastaFiles[i]
+  cl <- parallel::makeCluster(nodeN)
+  doParallel::registerDoParallel(cl)
 
-    iupredOut <- file.path(iupredOutDir, paste0(gsub(pattern = '.fasta$',
-                                                     replacement = '.iupred',
-                                                     x = basename(fastaFile))))
-    iupredResultFiles <- c(iupredResultFiles, iupredOut)
+  results <- foreach (i=1:length(fastaFiles), .inorder = TRUE) %dopar% {
+    fastaFile <- fastaFiles[i]
+    id <- gsub('.fasta', '', basename(fastaFile))
+    iupredOut <- file.path(iupredOutDir, paste0(id, '.iupred'))
     if (!file.exists(iupredOut) | overwrite == TRUE) {
       myCommand <- paste(paste0("export IUPred_PATH=",iupredPath, ";"),
                          file.path(iupredPath, 'iupred'),
                          fastaFile, "short >", iupredOut)
       system(command = myCommand)
     }
+
+    if(file.exists(iupredOut)) {
+      df <- read.table(file = iupredOut)
+      result <- as.numeric(df$V3)
+    } else {
+      result <- NA
+    }
   }
-  if (returnResultsAsList == TRUE) {
-    results <- readIUPred(iupredResultFiles = iupredResultFiles)
-    names(results) <- gsub(pattern = '.iupred$', replacement = '', x = names(results))
-    return (results)
-  }
+  names(results) <- gsub(pattern = '.fasta$', replacement = '', x = basename(fastaFiles))
+  stopCluster(cl)
+  return(results)
 }
 
 #' readIUpred
@@ -420,14 +378,19 @@ readIUPred <- function(iupredResultFiles) {
 #'   and txt.
 #' @param overwrite TRUE or FALSE (default). Whether the existing files should
 #'   be overwritten with a new download.
-#'
+#' @param nodeN default: 1. Positive integer for the number of parallel cores to use
+#' for downloading and processing the files
 #' @examples
 #' ids <- c('P04637', 'P11166', 'P06400')
 #' downloadUniprotFiles(uniprotAccessions = ids, outDir = getwd(),
 #'                                 format = 'fasta', overwrite = FALSE)
 #'
 #' @export
-downloadUniprotFiles <- function (uniprotAccessions, outDir = getwd(), format, overwrite = FALSE) {
+downloadUniprotFiles <- function (uniprotAccessions,
+                                  outDir = getwd(),
+                                  format,
+                                  overwrite = FALSE,
+                                  nodeN = 1) {
   if (!format %in% c('fasta', 'gff', 'txt')) {
     stop("Uniprot files can only be downloaded in fasta, gff or txt formats.",
          format,"is not a valid option.")
@@ -441,7 +404,10 @@ downloadUniprotFiles <- function (uniprotAccessions, outDir = getwd(), format, o
     dir.create(subOutDir)
   }
 
-  for (i in 1:length(uniprotAccessions)) {
+  cl <- parallel::makeCluster(nodeN)
+  doParallel::registerDoParallel(cl)
+
+  results <- foreach (i=1:length(uniprotAccessions), .inorder = TRUE) %dopar% {
     id <- uniprotAccessions[i]
     fileUrl <- paste0("http://www.uniprot.org/uniprot/", id, ".", format)
     fileOut <- file.path(subOutDir, paste0(id, '.', format))
@@ -449,6 +415,25 @@ downloadUniprotFiles <- function (uniprotAccessions, outDir = getwd(), format, o
     if (!file.exists(fileOut) | overwrite == TRUE) {
       download.file(url = fileUrl, destfile = fileOut, quiet = TRUE, mode = 'w')
     }
+
+    if(file.exists(fileOut)) {
+      if(format == 'fasta') {
+        result <- paste(Biostrings::readAAStringSet(filepath = fileOut,
+                                                      format = 'fasta'))
+      } else if (format == 'gff') {
+        result <- rtracklayer::import.gff(con = fileOut)
+      } else if (format == 'txt') {
+        result <- readLines(con = fileOut)
+      } else {
+        result <- NA
+      }
+    } else {
+      result <- NA
+    }
+    result
   }
+  names(results) <- uniprotAccessions
+  stopCluster(cl)
+  return(results)
 }
 
