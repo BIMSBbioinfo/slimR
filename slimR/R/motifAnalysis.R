@@ -107,6 +107,7 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
 
   lostMotifs <- c()
   gainedMotifs <- c()
+  neutralVars <- c() #Variants that don't cause any changes in motif content
 
   for (i in 1:nrow(variants)) {
     wtAA <- as.character(variants$wtAA[i])
@@ -134,25 +135,37 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
                         paste(wtAA, mutAA, pos,
                               gained, 'gained', sep = ':'))
     }
+
+    if(length(lost) == 0 & length(gained) == 0){
+      neutralVars <- c(neutralVars, paste(wtAA, mutAA, pos,
+                             "None:0:0",
+                             'NoChange', sep = ':'))
+    }
+
   }
-  change <- c(lostMotifs, gainedMotifs)
-  if (length(change) > 0) {
-    wtSeq <- unlist(strsplit(sequence, split = ''))
-    change <- data.frame(do.call(rbind,
-                                 strsplit(change, ':')),
-                         stringsAsFactors = FALSE)
-    colnames(change) <- c('wtAA', 'mutAA', 'pos',
-                          'SLiM', 'SLiM_start', 'SLiM_end',
-                          'change')
-    change$RegEx <- motifRegex[change$SLiM]
-    change$SLiM_Sequence <- lapply(X = 1:nrow(change),
-                                   FUN = function (x) {
+  change <- c(lostMotifs, gainedMotifs, neutralVars)
+
+  wtSeq <- unlist(strsplit(sequence, split = ''))
+  change <- data.frame(do.call(rbind,
+                               strsplit(change, ':')),
+                       stringsAsFactors = FALSE)
+  colnames(change) <- c('wtAA', 'mutAA', 'pos',
+                        'SLiM', 'SLiM_start', 'SLiM_end',
+                        'change')
+  change$RegEx <- motifRegex[change$SLiM]
+  change$SLiM_Sequence <- lapply(X = 1:nrow(change),
+                                 FUN = function (x) {
+                                   if(change$change[x] == 'NoChange'){
+                                     "None"
+                                   } else {
                                      paste(wtSeq[change$SLiM_start[x]:change$SLiM_end[x]],
-                                           collapse = '')})
-    return(change)
-  } else {
-    return(0)
-  }
+                                           collapse = '')
+                                   }
+                                   })
+  change$SLiM_start <- as.numeric(change$SLiM_start)
+  change$SLiM_end <- as.numeric(change$SLiM_end)
+  change$pos <- as.numeric(change$pos)
+  return(change)
 }
 
 #' findMotifChangesMulti
@@ -200,9 +213,6 @@ findMotifChangesMulti <- function(sequences,
                                   variants = variants[variants$uniprotAccession == uni,],
                                   motifRegex = motifRegex
                                   )
-      if(result == 0) {
-        result <- 'No motif changes'
-      }
     } else {
       result <- 'No variants found'
     }
