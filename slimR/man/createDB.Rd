@@ -7,7 +7,7 @@
 createDB(uniprotAccessions, iupredPath = "/home/buyar/tools/iupred",
   motifRegex = slimR::motifRegex, workingDirectory = getwd(), nodeN = 1,
   overwrite = FALSE, updateFasta = TRUE, updateGff = TRUE,
-  updateIupred = TRUE, updateSlims = TRUE, updateSlimChanges)
+  updateIupred = TRUE, updateSlims = TRUE, updateSlimChanges = TRUE)
 }
 \arguments{
 \item{uniprotAccessions}{Vector of uniprot accessions (e.g. c('P04637',

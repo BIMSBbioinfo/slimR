@@ -42,7 +42,7 @@ createDB <- function(uniprotAccessions,
                      updateGff = TRUE,
                      updateIupred = TRUE,
                      updateSlims = TRUE,
-                     updateSlimChanges) {
+                     updateSlimChanges = TRUE) {
 
   if(!dir.exists(workingDirectory)){
     dir.create(workingDirectory)
