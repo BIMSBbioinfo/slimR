@@ -51,5 +51,3 @@ for the first time. Once the database is created, it will be very quick to do in
 - [Max-Delbrueck-Center for Molecular Medicine](https://www.mdc-berlin.de)
 
 - [The German Network for Bioinformatics Infrastructure](http://www.denbi.de/)
-=======
-- The German Network for Bioinformatics Infrastructure: [de.NBI](http://www.denbi.de/)
