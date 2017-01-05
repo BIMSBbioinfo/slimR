@@ -44,13 +44,10 @@ for the first time. Once the database is created, it will be very quick to do in
 
 ## Acknowledgements
 
-- [Altuna Akalin](http://bioinformatics.mdc-berlin.de/team.html#altuna-akalin-phd)
-
 - [The Bioinformatics Platform](http://bioinformatics.mdc-berlin.de)
 
-- Berlin Institute for Medical Systems Biology: [BIMSB](https://www.mdc-berlin.de/13800178/en/bimsb)
+- [Berlin Institute for Medical Systems Biology](https://www.mdc-berlin.de/13800178/en/bimsb)
 
-- Max-Delbrueck-Center for Molecular Medicine: [MDC](https://www.mdc-berlin.de)
+- [Max-Delbrueck-Center for Molecular Medicine](https://www.mdc-berlin.de)
 
-- The German Network for Bioinformatics Infrastructure: [de.NBI](http://www.denbi.de/)
-
+- [The German Network for Bioinformatics Infrastructure](http://www.denbi.de/)
