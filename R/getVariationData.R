@@ -153,6 +153,7 @@ getClinVarData <- function(url, overwrite = FALSE) {
 #' @return a data.table data.frame containing variation data read from VEP
 #'   output
 #'
+#' @importFrom data.table fread
 #' @export
 runVEP <- function(vepPATH = '/home/buyar/.local/bin/variant_effect_predictor.pl', vcfFilePath, overwrite = FALSE) {
   vepOutFile <- gsub(pattern = '.vcf$', replacement = '.VEP.tsv', x = vcfFilePath)
@@ -162,6 +163,56 @@ runVEP <- function(vepPATH = '/home/buyar/.local/bin/variant_effect_predictor.pl
   vepData <- data.table::fread(vepOutFile)
   return(vepData)
 }
+
+#' processVEP
+#'
+#' This function processes the output of Variant Effect Predictor to
+#' select missense variants and create some columns that are useful
+#' to assess the pathogenicity of variants
+#'
+#' @param vcfFilePath path to VCF file containing variation data
+#' @importFrom parallel makeCluster
+#' @importFrom parallel clusterExport
+#' @importFrom parallel stopCluster
+#' @importFrom vcfR read.vcfR
+#' @importFrom vcfR extract_info_tidy
+#' @return A data.table object
+#' @export
+processVEP <- function(vcfFilePath, nodeN = 8) {
+  #read VEP results
+  vepRaw <- runVEP(vcfFilePath = vcfFilePath, overwrite = FALSE)
+
+  #filter for missense variants with swissprot ids
+  vep <- vepRaw[grepl(pattern = 'SWISSPROT', x = vepRaw$Extra)]
+  vep <- vep[Consequence == 'missense_variant']
+  cl <- parallel::makeCluster(nodeN)
+  parallel::clusterExport(cl, varlist = c('vep'))
+  vep$uniprotAcc <- gsub(pattern = '(SWISSPROT=|;$)', replacement = '', do.call(c, parLapply(cl, vep$Extra, function(x) {
+    unlist(stringi::stri_extract_all(str = x, regex = 'SWISSPROT=.*?;'))
+  })))
+  parallel::stopCluster(cl)
+  colnames(vep)[1] <- 'dbSNP'
+
+  #remove rows where multiple amino acids are reported for missense variants
+  vep <- vep[grep('^.\\/.$', vep$Amino_acids),]
+
+  #add extra columns about the mutation positions and amino acids
+  vep$pos <- as.numeric(vep$Protein_position)
+  vep$wtAA <- gsub(pattern = '\\/.$', '', vep$Amino_acids)
+  vep$mutAA <- gsub(pattern = '^.\\/', '', vep$Amino_acids)
+  vep$RS <- as.numeric(gsub('rs', '', vep$dbSNP))
+
+  #add extra info from clinvar data
+  clinvarData <- vcfR::extract_info_tidy(vcfR::read.vcfR(vcfFilePath))
+  vep$CLNSIG <- clinvarData[match(vep$RS, clinvarData$RS),]$CLNSIG
+  vep$CLNDBN <- clinvarData[match(vep$RS, clinvarData$RS),]$CLNDBN
+  vep$isCommonVariant <- clinvarData[match(vep$RS, clinvarData$RS),]$COMMON
+  vep$pathogenic <- unlist(lapply(vep$CLNSIG, function(x) sum(c('4', '5') %in% unlist(strsplit(x,  split = '\\|'))) > 0))
+  vep$implicatedInAnyDisease <- gsub(pattern = "not_provided|not_specified|\\|", replacement = '', vep$CLNDBN) != ''
+
+  return(vep)
+}
+
 
 
 
