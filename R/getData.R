@@ -152,22 +152,6 @@ createDB <- function(uniprotAccessions,
   }
 }
 
-#' parseMutation
-#'
-#' Given a vector of mutation substitutions (e.g. "p.His160Arg")
-#' -> split "p.His160Arg" into "H 160 R"
-#' @export
-parseMutation <- function (mutations) {
-  mutations <- gsub(pattern = '^p.', replacement = '', x = mutations)
-  pos <- stringr::str_match(pattern = '\\d+', string = mutations)
-  df <- data.frame(do.call(rbind, stringr::str_split(pattern = '\\d+', string = mutations)))
-  df$pos <- as.numeric(pos)
-  colnames(df) <- c('wtAA', 'mutAA', 'pos')
-  df$wtAA <- slimR::aaTable$oneLetterCode[match(df$wtAA, slimR::aaTable$threeLetterCode, nomatch = )]
-  df$mutAA <- slimR::aaTable$oneLetterCode[match(df$mutAA, slimR::aaTable$threeLetterCode)]
-  return(df)
-}
-
 
 #' getElmClasses
 #'
