@@ -137,8 +137,30 @@ getClinVarData <- function(url, overwrite = FALSE) {
     clinvarData <- vcfR::extract_info_tidy(vcfR::read.vcfR(destFile))
     return(clinvarData)
   } else {
-    stop("Couldn't find",destFile,"to parse the results. Probably the download didn't work\n")
+    stop("Couldn't find",destFile,"to parse the results.
+         Probably the download didn't work\n")
   }
+}
+
+#' runVEP
+#'
+#' A wrapper function to run Ensembl's variant_effect_predictor script for a
+#' given vcf file.
+#'
+#' @param vepPATH path to the variant_effect_predictor.pl script
+#' @param vcfFilePath path to VCF file containing variation data
+#'
+#' @return a data.table data.frame containing variation data read from VEP
+#'   output
+#'
+#' @export
+runVEP <- function(vepPATH = '/home/buyar/.local/bin/variant_effect_predictor.pl', vcfFilePath, overwrite = FALSE) {
+  vepOutFile <- gsub(pattern = '.vcf$', replacement = '.VEP.tsv', x = vcfFilePath)
+  if(!file.exists(vepOutFile) | (file.exists(vepOutFile) & overwrite == TRUE)) {
+    system(paste(vepPATH,'-i',vcfFilePath,' -o',vepOutFile,' --cache --uniprot --force_overwrite'))
+  }
+  vepData <- data.table::fread(vepOutFile)
+  return(vepData)
 }
 
 
