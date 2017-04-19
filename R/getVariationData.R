@@ -213,6 +213,40 @@ processVEP <- function(vcfFilePath, nodeN = 8) {
   return(vep)
 }
 
+#' combineClinVarWithHumsavar
+#'
+#' This function processes humsavar variants (output of getHumSavar()) and
+#' clinvar variants (output of runVEP) and merges into a simplified data.table
+#' object
+#'
+#' @param vcfFilePath path to VCF file containing variation data from ClinVar
+#'   database
+#' @return A data.table object
+#'
+#' @importFrom data.table data.table
+#' @export
+combineClinVarWithHumsavar <- function(vcfFilePath) {
+  hs <- data.table::data.table(as.data.frame(getHumSavar()))
+
+  #humsavar data simplified
+  hs <- unique(subset(hs, select = c('seqnames', 'start', 'variant', 'dbSNP', 'wtAA', 'mutAA')))
+  colnames(hs) <- c('uniprotAcc', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA')
+  #hs$source <- 'humsavar'
+
+  #clinvar VEP results simplified
+  cv <- processVEP(vcfFilePath)
+  cv$variant <- ifelse(cv$pathogenic == TRUE, 'Disease', 'Polymorphism')
+
+  cv <- unique(subset(cv, select = c('uniprotAcc', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA')))
+  #cv$source <- 'clinvar'
+
+  combined <- merge(hs, cv, by = c('dbSNP', 'uniprotAcc', 'pos', 'wtAA', 'mutAA'), all = T)
+  colnames(combined) <- c('dbSNP', 'uniprotAcc', 'pos', 'wtAA', 'mutAA', 'humsavarVariant', 'clinvarVariant')
+
+  return(combined)
+}
+
+
 
 
 
