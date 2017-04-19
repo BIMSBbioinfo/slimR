@@ -21,7 +21,10 @@ Description: slimR is a protein sequence analysis package centered around
   of species via gain/loss of SLiMs in any comparative context.
 Depends: 
     doParallel,
-    GenomicRanges
+    GenomicRanges,
+    data.table,
+    vcfR,
+    parallel
 License: Artistic-2.0
 LazyData: TRUE
 RoxygenNote: 5.0.1
