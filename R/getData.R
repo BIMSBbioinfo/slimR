@@ -188,7 +188,7 @@ getHumSavar <- function () {
     return(readRDS(paste0(variantFile, '.RDS')))
   } else {
     #skip first 30 lines which don't contain mutation data
-    dat <- readLines(con = variantFile)[-(1:30)]
+    dat <- readLines(con = variantFile)[-(1:50)]
 
     #grep the lines with relevant variant data
     mut <- grep(pattern = "Polymorphism|Disease|Unclassified",
