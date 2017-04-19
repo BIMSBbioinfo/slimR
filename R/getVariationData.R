@@ -105,8 +105,41 @@ parseUniprotHumanVariationData <- function (filePath, outFile = 'parseUniprotHum
   return(dt)
 }
 
-### Functions to map ClinVar data to Uniprot sequences
+### Functions to download and map ClinVar data to Uniprot sequences
+#' getClinVarData
+#'
+#' This function will fetch the clinvar data from the given url and parse the contents
+#' of the downloaded file.
+#'
+#' @param url The url to the ftp location of the clinvar dataset
+#'  (e.g. ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar_20170404.vcf.gz)
+#' @return A tibble object extracted from the downloaded vcf file
+#' @importFrom vcfR read.vcfR
+#' @export
+getClinVarData <- function(url, overwrite = FALSE) {
+  destFile <- basename(url)
+  if(overwrite == TRUE) {
+    download.file(url = url, destfile = destFile)
+  } else if (overwrite == FALSE) {
+    if(!file.exists(destFile)) {
+      download.file(url = url, destfile = destFile)
+    }
+  }
 
+  if(file.exists(destFile)) {
+    if(overwrite == TRUE) {
+      gunzipCommand <- paste('gunzip -f',destFile)
+    } else {
+      gunzipCommand <- paste('gunzip',destFile)
+    }
+    system(gunzipCommand)
+    destFile <- gsub('.gz$', '', destFile)
+    clinvarData <- vcfR::extract_info_tidy(vcfR::read.vcfR(destFile))
+    return(clinvarData)
+  } else {
+    stop("Couldn't find",destFile,"to parse the results. Probably the download didn't work\n")
+  }
+}
 
 
 
