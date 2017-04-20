@@ -4,7 +4,7 @@
 \alias{combineClinVarWithHumsavar}
 \title{combineClinVarWithHumsavar}
 \usage{
-combineClinVarWithHumsavar(vcfFilePath)
+combineClinVarWithHumsavar(vcfFilePath, vepFilePath, nodeN = 8)
 }
 \arguments{
 \item{vcfFilePath}{path to VCF file containing variation data from ClinVar

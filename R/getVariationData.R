@@ -166,11 +166,14 @@ runVEP <- function(vepPATH = '/home/buyar/.local/bin/variant_effect_predictor.pl
 
 #' processVEP
 #'
-#' This function processes the output of Variant Effect Predictor to
-#' select missense variants and create some columns that are useful
-#' to assess the pathogenicity of variants
+#' This function processes the output of Variant Effect Predictor to select
+#' missense variants and create some columns that are useful to assess the
+#' pathogenicity of variants
 #'
 #' @param vcfFilePath path to VCF file containing variation data
+#' @param vepFilePath path to the VEP results obtained from running
+#'   variant_effect_predictor on the given vcfFilePath
+#' @param nodeN (default: 8) Number of cores to use for parallel processing
 #' @importFrom parallel makeCluster
 #' @importFrom parallel clusterExport
 #' @importFrom parallel stopCluster
@@ -178,13 +181,17 @@ runVEP <- function(vepPATH = '/home/buyar/.local/bin/variant_effect_predictor.pl
 #' @importFrom vcfR extract_info_tidy
 #' @return A data.table object
 #' @export
-processVEP <- function(vcfFilePath, nodeN = 8) {
+processVEP <- function(vcfFilePath, vepFilePath, nodeN = 8) {
   if(!file.exists(vcfFilePath)) {
     stop("Couldn't find the path to the vcf file",vcfFilePath)
   }
 
+  if(!file.exists(vepFilePath)) {
+    stop("Couldn't find the path to the VEP results file",vepFilePath)
+  }
+
   #read VEP results
-  vepRaw <- runVEP(vcfFilePath = vcfFilePath, overwrite = FALSE)
+  vepRaw <- data.table::fread(vepOutFile)
 
   #filter for missense variants with swissprot ids
   vep <- vepRaw[grepl(pattern = 'SWISSPROT', x = vepRaw$Extra)]
@@ -229,9 +236,9 @@ processVEP <- function(vcfFilePath, nodeN = 8) {
 #'
 #' @importFrom data.table data.table
 #' @export
-combineClinVarWithHumsavar <- function(vcfFilePath) {
+combineClinVarWithHumsavar <- function(vcfFilePath, vepFilePath, nodeN = 8) {
   #clinvar VEP results simplified
-  cv <- processVEP(vcfFilePath)
+  cv <- processVEP(vcfFilePath, vepFilePath, nodeN = nodeN)
   cv$variant <- ifelse(cv$pathogenic == TRUE, 'Disease', 'Polymorphism')
 
   cv <- unique(subset(cv, select = c('uniprotAcc', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA')))

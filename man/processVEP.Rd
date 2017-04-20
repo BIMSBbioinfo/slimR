@@ -4,17 +4,22 @@
 \alias{processVEP}
 \title{processVEP}
 \usage{
-processVEP(vcfFilePath, nodeN = 8)
+processVEP(vcfFilePath, vepFilePath, nodeN = 8)
 }
 \arguments{
 \item{vcfFilePath}{path to VCF file containing variation data}
+
+\item{vepFilePath}{path to the VEP results obtained from running
+variant_effect_predictor on the given vcfFilePath}
+
+\item{nodeN}{(default: 8) Number of cores to use for parallel processing}
 }
 \value{
 A data.table object
 }
 \description{
-This function processes the output of Variant Effect Predictor to
-select missense variants and create some columns that are useful
-to assess the pathogenicity of variants
+This function processes the output of Variant Effect Predictor to select
+missense variants and create some columns that are useful to assess the
+pathogenicity of variants
 }
 
