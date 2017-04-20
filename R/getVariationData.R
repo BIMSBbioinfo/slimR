@@ -47,7 +47,7 @@ getHumSavar <- function () {
                                  n = 7,
                                  pattern = '\\s+')))
 
-    colnames(mut) <- c('geneName', 'uniprotAcc',
+    colnames(mut) <- c('geneName', 'uniprotAccession',
                        'FTId', 'change',
                        'variant', 'dbSNP', 'diseaseName')
 
@@ -63,7 +63,7 @@ getHumSavar <- function () {
     mut <- GenomicRanges::makeGRangesFromDataFrame(df = mut,
                                                    keep.extra.columns = TRUE,
                                                    ignore.strand = TRUE,
-                                                   seqnames.field = 'uniprotAcc',
+                                                   seqnames.field = 'uniprotAccession',
                                                    start.field = 'pos', end.field = 'pos')
     saveRDS(object = mut, file = paste0(variantFile, ".RDS"))
     return(mut)
@@ -210,7 +210,7 @@ processVEP <- function(vcfFilePath, vepFilePath, nodeN = 8) {
 
   cl <- parallel::makeCluster(nodeN)
   parallel::clusterExport(cl, varlist = c('vep'), envir = environment())
-  vep$uniprotAcc <- gsub(pattern = '(SWISSPROT=|;$)', replacement = '', do.call(c, parLapply(cl, vep$Extra, function(x) {
+  vep$uniprotAccession <- gsub(pattern = '(SWISSPROT=|;$)', replacement = '', do.call(c, parLapply(cl, vep$Extra, function(x) {
     unlist(stringi::stri_extract_all(str = x, regex = 'SWISSPROT=.*?;'))
   })))
   parallel::stopCluster(cl)
@@ -258,16 +258,16 @@ combineClinVarWithHumsavar <- function(vcfFilePath, vepFilePath, nodeN = 8) {
   cv[cv$pathogenic == TRUE]$variant <- 'Disease'
   cv[cv$pathogenic == FALSE & cv$isCommonVariant == 1,]$variant <- 'Polymorphism'
 
-  cv <- unique(subset(cv, select = c('uniprotAcc', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA')))
+  cv <- unique(subset(cv, select = c('uniprotAccession', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA')))
 
   hs <- data.table::data.table(as.data.frame(getHumSavar()))
 
   #humsavar data simplified
   hs <- unique(subset(hs, select = c('seqnames', 'start', 'variant', 'dbSNP', 'wtAA', 'mutAA')))
-  colnames(hs) <- c('uniprotAcc', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA')
+  colnames(hs) <- c('uniprotAccession', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA')
 
-  combined <- merge(hs, cv, by = c('dbSNP', 'uniprotAcc', 'pos', 'wtAA', 'mutAA'), all = T)
-  colnames(combined) <- c('dbSNP', 'uniprotAcc', 'pos', 'wtAA', 'mutAA', 'humsavarVariant', 'clinvarVariant')
+  combined <- merge(hs, cv, by = c('dbSNP', 'uniprotAccession', 'pos', 'wtAA', 'mutAA'), all = T)
+  colnames(combined) <- c('dbSNP', 'uniprotAccession', 'pos', 'wtAA', 'mutAA', 'humsavarVariant', 'clinvarVariant')
 
   return(combined)
 }
@@ -278,10 +278,10 @@ combineClinVarWithHumsavar <- function(vcfFilePath, vepFilePath, nodeN = 8) {
 #' with the fasta sequences of the proteins
 #'
 #' @param df A data.frame or data.table containing minimally the following
-#'   columns: 1. uniprotAcc 2. wtAA (wild-type amino acid) 3. pos (the position
+#'   columns: 1. uniprotAccession 2. wtAA (wild-type amino acid) 3. pos (the position
 #'   of the wild-type amino acid in the protein sequence)
 #' @param fasta A list of fasta sequences, in which names of the list items
-#'   should correspond to the uniprotAcc column of the 'df' input
+#'   should correspond to the uniprotAccession column of the 'df' input
 #' @param nodeN Number of cores to use to parallelise the run
 #' @return A subset of the initial data.frame or data.table object such that the
 #'   given positions of amino acids match the residues in the fasta sequences
@@ -293,7 +293,7 @@ validateVariants <- function(df, fasta, nodeN = 8) {
   cl <- parallel::makeCluster(nodeN)
   parallel::clusterExport(cl, varlist = c('df', 'fasta'), envir = environment())
   df$validity <- parApply(cl, df, 1, function(x) {
-    uni <- x['uniprotAcc']
+    uni <- x['uniprotAccession']
     AA <- x['wtAA']
     pos <- as.numeric(x['pos'])
     #cat("TEST:", uni, AA, pos, unlist(strsplit(fasta[[uni]], ''))[pos], '\n')

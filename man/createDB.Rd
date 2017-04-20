@@ -5,13 +5,25 @@
 \title{createDB}
 \usage{
 createDB(uniprotAccessions, iupredPath = "/home/buyar/tools/iupred",
+  vepPath = "/home/buyar/.local/bin/variant_effect_predictor.pl",
+  clinvarDataURL = "ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar_20170404.vcf.gz",
   motifRegex = slimR::motifRegex, workingDirectory = getwd(), nodeN = 1,
   overwrite = FALSE, updateFasta = TRUE, updateGff = TRUE,
-  updateIupred = TRUE, updateSlims = TRUE, updateSlimChanges = TRUE)
+  updateIupred = TRUE, updateSlims = TRUE, updateVariants = TRUE,
+  updateSlimChanges = TRUE)
 }
 \arguments{
 \item{uniprotAccessions}{Vector of uniprot accessions (e.g. c('P04637',
 'P11166'))}
+
+\item{iupredPath}{Path to iupred executable (default:
+'/home/buyar/tools/iupred').}
+
+\item{vepPath}{Path to variant effect predictor script default:
+'/home/buyar/.local/bin/variant_effect_predictor.pl',}
+
+\item{clinvarDataURL}{URL to download clinvar data default:
+'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar_20170404.vcf.gz',}
 
 \item{workingDirectory}{Path to folder where the database should be created}
 
@@ -24,18 +36,21 @@ files except objects saved as RDS)}
 \item{updateFasta}{TRUE/FALSE (default: TRUE) Boolean to decide if fasta
 download module should be run to update fasta.RDS}
 
-\item{updateGff}{TRUE/FALSE (default: TRUE) Boolean to decide if
-gff download module should be run to update gff.RDS}
+\item{updateGff}{TRUE/FALSE (default: TRUE) Boolean to decide if gff download
+module should be run to update gff.RDS}
 
-\item{updateIupred}{TRUE/FALSE (default: TRUE) Boolean to decide if
-disorder prediction should be run to update iupred.RDS}
+\item{updateIupred}{TRUE/FALSE (default: TRUE) Boolean to decide if disorder
+prediction should be run to update iupred.RDS}
 
-\item{updateSlims}{TRUE/FALSE (default: TRUE) Boolean to decide if
-motif prediction should be run to update slims.RDS}
+\item{updateSlims}{TRUE/FALSE (default: TRUE) Boolean to decide if motif
+prediction should be run to update slims.RDS}
 
-\item{updateSlimChanges}{TRUE/FALSE (default: TRUE) Boolean to
-decide if motif changes should be calculated to update
-slimChanges.RDS files for variants}
+\item{updateVariants}{TRUE/FALSE (default: TRUE) Boolean to decide if
+variation data from (clinvar and humsavar) should be downloaded and updated}
+
+\item{updateSlimChanges}{TRUE/FALSE (default: TRUE) Boolean to decide if
+motif changes should be calculated to update slimChanges.RDS files for
+variants}
 }
 \description{
 Given a vectore of uniProt accessions, extract and process all available

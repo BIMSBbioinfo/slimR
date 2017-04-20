@@ -13,27 +13,37 @@
 #'
 #' @param uniprotAccessions Vector of uniprot accessions (e.g. c('P04637',
 #'   'P11166'))
+#' @param iupredPath Path to iupred executable (default:
+#'   '/home/buyar/tools/iupred').
+#' @param vepPath Path to variant effect predictor script default:
+#'   '/home/buyar/.local/bin/variant_effect_predictor.pl',
+#' @param clinvarDataURL URL to download clinvar data default:
+#'   'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar_20170404.vcf.gz',
 #' @param workingDirectory Path to folder where the database should be created
 #' @param nodeN Number of cores to run the database generation.
 #' @param overwrite TRUE/FALSE (default: FALSE) Boolean value to decide if the
 #'   previously downloaded or processed files be overwritten? (Applies to all
 #'   files except objects saved as RDS)
 #' @param updateFasta TRUE/FALSE (default: TRUE) Boolean to decide if fasta
-#' download module should be run to update fasta.RDS
-#' @param updateGff TRUE/FALSE (default: TRUE) Boolean to decide if
-#' gff download module should be run to update gff.RDS
-#' @param updateIupred TRUE/FALSE (default: TRUE) Boolean to decide if
-#' disorder prediction should be run to update iupred.RDS
-#' @param updateSlims TRUE/FALSE (default: TRUE) Boolean to decide if
-#' motif prediction should be run to update slims.RDS
-#' @param updateSlimChanges TRUE/FALSE (default: TRUE) Boolean to
-#' decide if motif changes should be calculated to update
-#' slimChanges.RDS files for variants
+#'   download module should be run to update fasta.RDS
+#' @param updateGff TRUE/FALSE (default: TRUE) Boolean to decide if gff download
+#'   module should be run to update gff.RDS
+#' @param updateIupred TRUE/FALSE (default: TRUE) Boolean to decide if disorder
+#'   prediction should be run to update iupred.RDS
+#' @param updateSlims TRUE/FALSE (default: TRUE) Boolean to decide if motif
+#'   prediction should be run to update slims.RDS
+#' @param updateVariants TRUE/FALSE (default: TRUE) Boolean to decide if
+#'   variation data from (clinvar and humsavar) should be downloaded and updated
+#' @param updateSlimChanges TRUE/FALSE (default: TRUE) Boolean to decide if
+#'   motif changes should be calculated to update slimChanges.RDS files for
+#'   variants
 #' @importFrom parallel makeCluster
 #' @importFrom doParallel registerDoParallel
 #' @export
 createDB <- function(uniprotAccessions,
                      iupredPath = '/home/buyar/tools/iupred',
+                     vepPath = '/home/buyar/.local/bin/variant_effect_predictor.pl',
+                     clinvarDataURL = 'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar_20170404.vcf.gz',
                      motifRegex = slimR::motifRegex,
                      workingDirectory = getwd(),
                      nodeN = 1,
@@ -42,6 +52,7 @@ createDB <- function(uniprotAccessions,
                      updateGff = TRUE,
                      updateIupred = TRUE,
                      updateSlims = TRUE,
+                     updateVariants = TRUE,
                      updateSlimChanges = TRUE) {
 
   if(!dir.exists(workingDirectory)){
@@ -117,19 +128,30 @@ createDB <- function(uniprotAccessions,
     stopCluster(cl)
   }
 
+  if(updateVariants == TRUE) {
+    fasta <- readRDS('./slimDB/fasta.RDS')
+    getClinVarData(url = clinvarDataURL, overwrite = TRUE)
+    vcfFilePath <- gsub('.gz$', '', basename(clinvarDataURL))
+    runVEP(vepPATH = vepPATH, vcfFilePath = vcfFilePath, overwrite = TRUE)
+    vepFilePath <- gsub('.vcf$', 'VEP.tsv', vcfFilePath)
+    variants <- combineClinVarWithHumsavar(vcfFilePath = vcfFilePath,
+                               vepFilePath = vepFilePath,
+                               nodeN = nodeN)
+    variants <- validateVariants(df = variants, fasta = fasta, nodeN = nodeN)
+    saveRDS(object = variants, file = file.path('./slimDB', 'variants.RDS'))
+  }
+
   if(updateSlimChanges == TRUE) {
 
     fasta <- readRDS('./slimDB/fasta.RDS')
-
+    variants <- readRDS('./slimDB/variants.RDS')
+    variants <- variants[uniprotAccession %in% uniprotAccessions & validity == 'valid']
+    variants$key <- c(1:nrow(variants))
     ##Find Motif Changes by Mutations start###
-    variants <- subset(x = as.data.frame(getHumSavar()),
-                       select = c('seqnames', 'start',
-                                  'wtAA', 'mutAA', 'variant'))
-    colnames(variants) <- c('uniprotAccession', 'pos',
-                            'wtAA', 'mutAA', 'variant')
-
-    diseaseVars <- unique(variants[variants$variant == 'Disease',])
-    polymorphisms <- unique(variants[variants$variant == 'Polymorphism',])
+    diseaseVars <- unique(variants[humsavarVariant == 'Disease' | clinvarVariant == 'Disease'])
+    polymorphisms <- unique(variants[!(variants$key %in% diseaseVars$key) &
+                                       (humsavarVariant == 'Polymorphism' |
+                                          clinvarVariant == 'Polymorphism')])
 
     slimChangesDisease <- slimR::findMotifChangesMulti(
       sequences = fasta,
