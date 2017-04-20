@@ -193,10 +193,21 @@ processVEP <- function(vcfFilePath, vepFilePath, nodeN = 8) {
 
   #read VEP results
   vepRaw <- data.table::fread(vepFilePath)
+  cat("Read",nrow(vepRaw),"mappings of",nrow(unique(vepRaw[,1])),"unique variants from",vepFilePath,"\n")
 
   #filter for missense variants with swissprot ids
   vep <- vepRaw[grepl(pattern = 'SWISSPROT', x = vepRaw$Extra)]
+
+  cat("Removing mappings that don't have a SWISSPROT ID...\n",
+      "\tkeeping",nrow(vep),"mappings of",nrow(unique(vep[,1])),
+      "unique variants from",vepFilePath,"\n")
+
   vep <- vep[Consequence == 'missense_variant']
+
+  cat("Removing variants that don't lead to a single amino-acid substitution...\n",
+      "\tkeeping",nrow(vep),"mappings of",nrow(unique(vep[,1])),
+      "unique variants from",vepFilePath,"\n")
+
   cl <- parallel::makeCluster(nodeN)
   parallel::clusterExport(cl, varlist = c('vep'), envir = environment())
   vep$uniprotAcc <- gsub(pattern = '(SWISSPROT=|;$)', replacement = '', do.call(c, parLapply(cl, vep$Extra, function(x) {
@@ -207,6 +218,9 @@ processVEP <- function(vcfFilePath, vepFilePath, nodeN = 8) {
 
   #remove rows where multiple amino acids are reported for missense variants
   vep <- vep[grep('^.\\/.$', vep$Amino_acids),]
+  cat("Removed variants where multiple amino acids are reported for missense variants...\n",
+      "\tkeeping",nrow(vep),"mappings of",nrow(unique(vep[,1])),
+      "unique variants from",vepFilePath,"\n")
 
   #add extra columns about the mutation positions and amino acids
   vep$pos <- as.numeric(vep$Protein_position)
