@@ -174,6 +174,7 @@ runVEP <- function(vepPATH = '/home/buyar/.local/bin/variant_effect_predictor.pl
 #' @param vepFilePath path to the VEP results obtained from running
 #'   variant_effect_predictor on the given vcfFilePath
 #' @param nodeN (default: 8) Number of cores to use for parallel processing
+#' @importFrom data.table fread
 #' @importFrom parallel makeCluster
 #' @importFrom parallel clusterExport
 #' @importFrom parallel stopCluster
@@ -191,7 +192,7 @@ processVEP <- function(vcfFilePath, vepFilePath, nodeN = 8) {
   }
 
   #read VEP results
-  vepRaw <- data.table::fread(vepOutFile)
+  vepRaw <- data.table::fread(vepFilePath)
 
   #filter for missense variants with swissprot ids
   vep <- vepRaw[grepl(pattern = 'SWISSPROT', x = vepRaw$Extra)]
