@@ -198,7 +198,7 @@ processVEP <- function(vcfFilePath, vepFilePath, nodeN = 8) {
   vep <- vepRaw[grepl(pattern = 'SWISSPROT', x = vepRaw$Extra)]
   vep <- vep[Consequence == 'missense_variant']
   cl <- parallel::makeCluster(nodeN)
-  parallel::clusterExport(cl, varlist = c('vep'))
+  parallel::clusterExport(cl, varlist = c('vep'), envir = environment())
   vep$uniprotAcc <- gsub(pattern = '(SWISSPROT=|;$)', replacement = '', do.call(c, parLapply(cl, vep$Extra, function(x) {
     unlist(stringi::stri_extract_all(str = x, regex = 'SWISSPROT=.*?;'))
   })))
