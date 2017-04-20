@@ -240,12 +240,11 @@ processVEP <- function(vcfFilePath, vepFilePath, nodeN = 8) {
 combineClinVarWithHumsavar <- function(vcfFilePath, vepFilePath, nodeN = 8) {
   #clinvar VEP results simplified
   cv <- processVEP(vcfFilePath, vepFilePath, nodeN = nodeN)
-  cv$variant <- ifelse(cv$pathogenic == TRUE, 'Disease', 'Polymorphism')
+  cv$variant <- 'Unclassified'
+  cv[cv$pathogenic == TRUE]$variant <- 'Disease'
+  cv[cv$pathogenic == FALSE & cv$isCommonVariant == 1,]$variant <- 'Polymorphism'
 
   cv <- unique(subset(cv, select = c('uniprotAcc', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA')))
-
-  combined <- merge(hs, cv, by = c('dbSNP', 'uniprotAcc', 'pos', 'wtAA', 'mutAA'), all = T)
-  colnames(combined) <- c('dbSNP', 'uniprotAcc', 'pos', 'wtAA', 'mutAA', 'humsavarVariant', 'clinvarVariant')
 
   hs <- data.table::data.table(as.data.frame(getHumSavar()))
 
@@ -253,10 +252,53 @@ combineClinVarWithHumsavar <- function(vcfFilePath, vepFilePath, nodeN = 8) {
   hs <- unique(subset(hs, select = c('seqnames', 'start', 'variant', 'dbSNP', 'wtAA', 'mutAA')))
   colnames(hs) <- c('uniprotAcc', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA')
 
+  combined <- merge(hs, cv, by = c('dbSNP', 'uniprotAcc', 'pos', 'wtAA', 'mutAA'), all = T)
+  colnames(combined) <- c('dbSNP', 'uniprotAcc', 'pos', 'wtAA', 'mutAA', 'humsavarVariant', 'clinvarVariant')
+
   return(combined)
 }
 
-
-
+#' validateVariants
+#'
+#' This function is used to validate whether the missense variants are consistent
+#' with the fasta sequences of the proteins
+#'
+#' @param df A data.frame or data.table containing minimally the following
+#'   columns: 1. uniprotAcc 2. wtAA (wild-type amino acid) 3. pos (the position
+#'   of the wild-type amino acid in the protein sequence)
+#' @param fasta A list of fasta sequences, in which names of the list items
+#'   should correspond to the uniprotAcc column of the 'df' input
+#' @param nodeN Number of cores to use to parallelise the run
+#' @return A subset of the initial data.frame or data.table object such that the
+#'   given positions of amino acids match the residues in the fasta sequences
+#' @importFrom parallel makeCluster
+#' @importFrom parallel clusterExport
+#' @importFrom parallel stopCluster
+#' @export
+validateVariants <- function(df, fasta, nodeN = 8) {
+  cl <- parallel::makeCluster(nodeN)
+  parallel::clusterExport(cl, varlist = c('df', 'fasta'), envir = environment())
+  df$validity <- parApply(cl, df, 1, function(x) {
+    uni <- x['uniprotAcc']
+    AA <- x['wtAA']
+    pos <- as.numeric(x['pos'])
+    #cat("TEST:", uni, AA, pos, unlist(strsplit(fasta[[uni]], ''))[pos], '\n')
+    status <- ''
+    if(!uni %in% names(fasta)) {
+      status <- 'uni_not_available_as_fasta'
+    } else {
+      residues <- unlist(strsplit(fasta[[uni]], ''))
+      if(length(residues) < pos) {
+        status <- 'invalid'
+      } else if (residues[pos] == AA) {
+        status <- 'valid'
+      } else {
+        status <- 'invalid'
+      }
+    }
+    status
+  })
+  return(df)
+}
 
 
