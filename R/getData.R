@@ -380,6 +380,9 @@ downloadUniprotFiles <- function (uniprotAccessions,
     result
   }
   names(results) <- uniprotAccessions
+
+  #TODO here check again if there are any empty strings and offer to download them again
+
   stopCluster(cl)
   return(results)
 }
