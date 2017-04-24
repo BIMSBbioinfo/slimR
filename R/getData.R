@@ -366,7 +366,7 @@ downloadUniprotFiles <- function (uniprotAccessions,
       downloadFlag <- download.file(url = fileUrl, destfile = fileOut, quiet = TRUE, mode = 'w', method = 'wget')
     }
 
-    result <- NA
+    result <- ''
     if(downloadFlag == 0 & file.size(fileOut) > 0) {
       if(format == 'fasta') {
           result <- paste(Biostrings::readAAStringSet(filepath = fileOut,
@@ -382,7 +382,13 @@ downloadUniprotFiles <- function (uniprotAccessions,
   names(results) <- uniprotAccessions
 
   #TODO here check again if there are any empty strings and offer to download them again
-
+  emptyResults <- names(results)[unlist(lapply(results, nchar)) == 0]
+  if(length(emptyResults) > 0) {
+    warning(length(emptyResults), " of the downloaded fasta files are empty.
+            \tExcluding the following uniprot accessions from the analysis:\n",
+            paste0(emptyResults, collapse = '\t'),"\n")
+    results <- results[unlist(lapply(results, nchar)) > 0]
+  }
   stopCluster(cl)
   return(results)
 }
