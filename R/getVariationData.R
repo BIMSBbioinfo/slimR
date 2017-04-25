@@ -116,7 +116,7 @@ parseUniprotHumanVariationData <- function (filePath, outFile = 'parseUniprotHum
 #' @return A tibble object extracted from the downloaded vcf file
 #' @importFrom vcfR read.vcfR
 #' @export
-getClinVarData <- function(url, overwrite = FALSE) {
+getClinVarData <- function(url, overwrite = FALSE, parseDownloadedFile = TRUE) {
   destFile <- basename(url)
   if(overwrite == TRUE) {
     download.file(url = url, destfile = destFile)
@@ -134,8 +134,10 @@ getClinVarData <- function(url, overwrite = FALSE) {
     }
     system(gunzipCommand)
     destFile <- gsub('.gz$', '', destFile)
-    clinvarData <- vcfR::extract_info_tidy(vcfR::read.vcfR(destFile))
-    return(clinvarData)
+    if(parseDownloadedFile == TRUE) {
+      clinvarData <- vcfR::extract_info_tidy(vcfR::read.vcfR(destFile))
+      return(clinvarData)
+    }
   } else {
     stop("Couldn't find",destFile,"to parse the results.
          Probably the download didn't work\n")
@@ -155,13 +157,18 @@ getClinVarData <- function(url, overwrite = FALSE) {
 #'
 #' @importFrom data.table fread
 #' @export
-runVEP <- function(vepPATH = '/home/buyar/.local/bin/variant_effect_predictor.pl', vcfFilePath, overwrite = FALSE) {
+runVEP <- function(vepPATH = '/home/buyar/.local/bin/variant_effect_predictor.pl',
+                   vcfFilePath,
+                   overwrite = FALSE,
+                   parseResultFile = FALSE) {
   vepOutFile <- gsub(pattern = '.vcf$', replacement = '.VEP.tsv', x = vcfFilePath)
   if(!file.exists(vepOutFile) | (file.exists(vepOutFile) & overwrite == TRUE)) {
     system(paste(vepPATH,'-i',vcfFilePath,' -o',vepOutFile,' --cache --uniprot --force_overwrite'))
   }
-  vepData <- data.table::fread(vepOutFile)
-  return(vepData)
+  if(parseResultFile == TRUE) {
+    vepData <- data.table::fread(vepOutFile)
+    return(vepData)
+  }
 }
 
 #' processVEP
