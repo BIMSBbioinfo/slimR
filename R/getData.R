@@ -131,9 +131,9 @@ createDB <- function(uniprotAccessions,
   if(updateVariants == TRUE) {
     fasta <- readRDS('./slimDB/fasta.RDS')
     getClinVarData(url = clinvarDataURL, overwrite = overwrite, parseDownloadedFile = FALSE)
-    vcfFilePath <- gsub('.gz$', '', basename(clinvarDataURL))
+    vcfFilePath <- file.path(workingDirectory, gsub('.gz$', '', basename(clinvarDataURL)))
     runVEP(vepPATH = vepPath, vcfFilePath = vcfFilePath, overwrite = overwrite)
-    vepFilePath <- gsub('.vcf$', 'VEP.tsv', vcfFilePath)
+    vepFilePath <- gsub('.vcf$', '.VEP.tsv', vcfFilePath)
     variants <- combineClinVarWithHumsavar(vcfFilePath = vcfFilePath,
                                vepFilePath = vepFilePath,
                                nodeN = nodeN)
