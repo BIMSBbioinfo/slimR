@@ -4,7 +4,7 @@
 \alias{processVEP}
 \title{processVEP}
 \usage{
-processVEP(vcfFilePath, vepFilePath, nodeN = 8)
+processVEP(vcfFilePath, vepFilePath, nodeN = 4)
 }
 \arguments{
 \item{vcfFilePath}{path to VCF file containing variation data}
