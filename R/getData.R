@@ -366,7 +366,7 @@ downloadUniprotFiles <- function (uniprotAccessions,
       downloadFlag <- download.file(url = fileUrl, destfile = fileOut, quiet = TRUE, mode = 'w', method = 'wget')
     }
 
-    result <- NA
+    result <- ''
     if(downloadFlag == 0 & file.size(fileOut) > 0) {
       if(format == 'fasta') {
           result <- paste(Biostrings::readAAStringSet(filepath = fileOut,
@@ -381,7 +381,6 @@ downloadUniprotFiles <- function (uniprotAccessions,
   }
   names(results) <- uniprotAccessions
 
-  #TODO here check again if there are any empty strings and offer to download them again
   emptyResults <- names(results[is.na(results)])
   if(length(emptyResults) > 0) {
     warning(length(emptyResults), " of the downloaded files are empty.
