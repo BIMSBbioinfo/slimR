@@ -189,13 +189,13 @@ runVEP <- function(vepPATH = '/home/buyar/.local/bin/variant_effect_predictor.pl
 #' @importFrom vcfR extract_info_tidy
 #' @return A data.table object
 #' @export
-processVEP <- function(vcfFilePath, vepFilePath, nodeN = 8) {
+processVEP <- function(vcfFilePath, vepFilePath, nodeN = 4) {
   if(!file.exists(vcfFilePath)) {
-    stop("Couldn't find the path to the vcf file",vcfFilePath)
+    stop("Couldn't find the path to the vcf file ",vcfFilePath)
   }
 
   if(!file.exists(vepFilePath)) {
-    stop("Couldn't find the path to the VEP results file",vepFilePath)
+    stop("Couldn't find the path to the VEP results file ",vepFilePath)
   }
 
   #read VEP results
