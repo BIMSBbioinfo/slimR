@@ -5,7 +5,7 @@
 \title{runVEP}
 \usage{
 runVEP(vepPATH = "/home/buyar/.local/bin/variant_effect_predictor.pl",
-  vcfFilePath, overwrite = FALSE)
+  vcfFilePath, overwrite = FALSE, parseResultFile = FALSE)
 }
 \arguments{
 \item{vepPATH}{path to the variant_effect_predictor.pl script}
@@ -20,4 +20,3 @@ a data.table data.frame containing variation data read from VEP
 A wrapper function to run Ensembl's variant_effect_predictor script for a
 given vcf file.
 }
-

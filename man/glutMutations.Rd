@@ -19,4 +19,3 @@ A data.frame object
 Table of disease associated substitutions parsed from Humsavar (UniProt)
 }
 \keyword{datasets}
-

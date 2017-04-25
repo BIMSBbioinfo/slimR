@@ -16,4 +16,3 @@ A list of data.frame objects
 Given a list of files each containing iupred results for a single protein,
 return a list of data frames where each data frame holds the iupred results.
 }
-

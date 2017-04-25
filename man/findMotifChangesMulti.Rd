@@ -38,4 +38,3 @@ motifChanges <- findMotifChangesMulti(sequences = sequences,
                                      motifRegex = motifRegex,
                                      nodeN = 1)
 }
-

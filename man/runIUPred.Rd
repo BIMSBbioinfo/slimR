@@ -32,4 +32,3 @@ per-base iupred disorder scores. IUPred source code can be dowloaded from
 here: http://iupred.enzim.hu/Downloads.php After unpacking the source code,
 cd to the src directory. Compile the code with "cc iupred.c -o iupred"
 }
-

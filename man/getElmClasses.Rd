@@ -9,4 +9,3 @@ getElmClasses()
 \description{
 Scrape ELM classes table from elm.eu.org
 }
-

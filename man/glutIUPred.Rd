@@ -15,4 +15,3 @@ A data.frame object
 GLUT1 disorder score predictions by IUPred
 }
 \keyword{datasets}
-

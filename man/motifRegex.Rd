@@ -24,4 +24,3 @@ as.list(as.vector(elms$RegEx)) names(motifRegex) <-
 as.vector(elms$ELM_Identifier)
 }
 \keyword{datasets}
-

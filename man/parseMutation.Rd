@@ -10,4 +10,3 @@ parseMutation(mutations)
 Given a vector of mutation substitutions (e.g. "p.His160Arg")
 -> split "p.His160Arg" into "H 160 R"
 }
-

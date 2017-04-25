@@ -26,4 +26,3 @@ data("glutFasta")
 motifRegex <- list('TRG_ENDOCYTIC_2' = 'Y..[LMVIF]')
 searchSLiMs(paste(glutFasta), motifRegex)
 }
-

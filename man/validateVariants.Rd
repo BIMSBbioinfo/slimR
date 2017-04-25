@@ -24,4 +24,3 @@ A subset of the initial data.frame or data.table object such that the
 This function is used to validate whether the missense variants are consistent
 with the fasta sequences of the proteins
 }
-

@@ -15,4 +15,3 @@ locateAllRegex(sequence, pattern)
 Finds the positions and substrings of all overlapping
 matches of regexes in a given sequence
 }
-

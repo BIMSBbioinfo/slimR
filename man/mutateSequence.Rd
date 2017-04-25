@@ -27,4 +27,3 @@ A character string where wtAA is replaced with mutAA if the
 Given a protein sequence, create a mutated copy of the sequence at the
 desired position and amino acids.
 }
-

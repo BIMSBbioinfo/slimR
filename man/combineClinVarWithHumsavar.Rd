@@ -18,4 +18,3 @@ This function processes humsavar variants (output of getHumSavar()) and
 clinvar variants (output of runVEP) and merges into a simplified data.table
 object
 }
-

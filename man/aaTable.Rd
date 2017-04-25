@@ -15,4 +15,3 @@ A data.frame object
 Amino acid table for converting between three letter code and one letter code.
 }
 \keyword{datasets}
-

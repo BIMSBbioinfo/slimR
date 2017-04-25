@@ -64,4 +64,3 @@ when diesase-causing variants at 4) are applied to the sequence 7. SLiM
 Changes due to polymorphisms - The collection of changes in the proteins'
 SLiM content when polymorphisms at 4) are applied to the sequence
 }
-

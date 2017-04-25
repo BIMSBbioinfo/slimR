@@ -12,4 +12,3 @@ A Granges object containing the coordinates of mutated sites in proteins
 \description{
 Download and parse protein mutation data from UniProt
 }
-

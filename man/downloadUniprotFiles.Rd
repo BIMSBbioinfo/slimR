@@ -35,4 +35,3 @@ downloadUniprotFiles(uniprotAccessions = ids, outDir = getwd(),
                                 format = 'fasta', overwrite = FALSE)
 
 }
-

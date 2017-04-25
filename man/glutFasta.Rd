@@ -18,4 +18,3 @@ A AAStringSet object
 The amino acid sequence for P11166 protein (GLUT1)
 }
 \keyword{datasets}
-

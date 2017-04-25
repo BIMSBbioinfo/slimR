@@ -23,4 +23,3 @@ c <- findMotifChanges(sequence = paste(glutFasta),
                       variants = glutMutations,
                      motifRegex = motifRegex)
 }
-

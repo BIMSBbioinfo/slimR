@@ -22,4 +22,3 @@ This function processes the output of Variant Effect Predictor to select
 missense variants and create some columns that are useful to assess the
 pathogenicity of variants
 }
-

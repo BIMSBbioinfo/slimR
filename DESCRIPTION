@@ -3,7 +3,7 @@ Type: Package
 Title: Short Linear Motif (SLiM) Analysis in the context of human diseases
 Version: 0.99.0
 Date: 2016-01-05
-Authors@R:  c(person("Bora", "Uyar", email='bora.uyar@mdc-berlin.de', role=c("aut", "cre")))
+Authors@R: c(person("Bora", "Uyar", email='bora.uyar@mdc-berlin.de', role=c("aut", "cre")))
 Description: slimR is a protein sequence analysis package centered around 
   short linear motifs (SLiMs) and their connections to human diseases.  
   The package contains functions to retrieve data from public databases 
@@ -27,4 +27,4 @@ Depends:
     parallel
 License: Artistic-2.0
 LazyData: TRUE
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1

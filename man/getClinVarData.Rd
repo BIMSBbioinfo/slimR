@@ -4,7 +4,7 @@
 \alias{getClinVarData}
 \title{getClinVarData}
 \usage{
-getClinVarData(url, overwrite = FALSE)
+getClinVarData(url, overwrite = FALSE, parseDownloadedFile = TRUE)
 }
 \arguments{
 \item{url}{The url to the ftp location of the clinvar dataset
@@ -17,4 +17,3 @@ A tibble object extracted from the downloaded vcf file
 This function will fetch the clinvar data from the given url and parse the contents
 of the downloaded file.
 }
-

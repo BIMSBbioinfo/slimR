@@ -20,4 +20,3 @@ drosophila+melanogaster etc.}
 \description{
 Using REST services, download ELM instances table from elm.eu.org
 }
-
