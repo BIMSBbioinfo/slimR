@@ -109,8 +109,9 @@ createDB <- function(uniprotAccessions,
 
     fasta <- readRDS('./slimDB/fasta.RDS')
 
-    slims <- foreach (i=1:length(fasta), .inorder = TRUE) %dopar% {
-      sequence <- fasta[[i]]
+    slims <- foreach (i=1:length(fasta), .inorder = TRUE, .verbose = TRUE) %dopar% {
+      sequence <- fasta[[i]][1] #sometimes the fasta item may contain multiple sequences
+                                #for the same id. Then use the first sequence.
       if(!is.na(sequence)) {
         result <- slimR::searchSLiMs(sequence = sequence,
                                      motifRegex = slimR::motifRegex)
@@ -370,7 +371,7 @@ downloadUniprotFiles <- function (uniprotAccessions,
     if(downloadFlag == 0 & file.size(fileOut) > 0) {
       if(format == 'fasta') {
           result <- paste(Biostrings::readAAStringSet(filepath = fileOut,
-                                                      format = 'fasta'))
+                                                      format = 'fasta'))[1]
         } else if (format == 'gff') {
           result <- rtracklayer::import.gff(con = fileOut)
         } else if (format == 'txt') {
@@ -393,4 +394,42 @@ downloadUniprotFiles <- function (uniprotAccessions,
 }
 
 
+#' findModifiedSlims
+#'
+#'
+#' Find out if a given slim pattern is only functional if it is
+#' post-translationally modified
+#'
+#' Modified residues are denoted within round brackets according to the
+#' convention employed by the ELM annotations e.g. The regex "S..([ST]).."
+#' suggests that [ST] residue needs to be modified for the function of this
+#' slim. However, round brackets are also used as part of universal regexes to
+#' group items. E.g.: motifRegex$TRG_ER_diArg_1 =>
+#' "([LIVMFYWPR]R[^YFWDE]{0,1}R)|(R[^YFWDE]{0,1}R[LIVMFYWPR])' So, we need a
+#' function to distinguish the usual usage of round brackets from those that
+#' suggest a modified residue.
+#'
+#' @param regex A regular expression pattern from ELM database
+#' @export
+findModifiedSlims <- function(regex) {
+  #find all sub patterns that have round brackets around them
+  matches <- slimR::locateAllRegex(sequence = regex, pattern = '\\(.*?\\)')$match
+  #loop over each match to find out if there is anything excep Serine, Threonine, or Tyrosines
+  result <- c(regex, FALSE, '')
+  for (m in matches) {
+    #count number of residue positions within each match
+    # if the match corresponds to a single residue, then it is a modification site
+    variablePositions <- slimR::locateAllRegex(m, '\\[.*?\\]')$match #positions that can be described by square brackets e.g. [IVL]  I or V or L is accepted
+    rm <- gsub(pattern = '\\[.*?\\]', '', m)
+    singleAApositions <- slimR::locateAllRegex(rm, '[A-Z]')$match
+    rm <- gsub(pattern = '[A-Z]', '', rm)
+    rm <- gsub(pattern = '[\\(\\)]', '', rm)
+    totalSize <- sum(length(variablePositions) + length(singleAApositions))
 
+    if(totalSize == 1 & nchar(rm) == 0) {
+      result = c(regex, TRUE, c(variablePositions, singleAApositions))
+      break
+    }
+  }
+  return(result)
+}
