@@ -140,7 +140,7 @@ createDB <- function(uniprotAccessions,
                                nodeN = nodeN)
     variants <- validateVariants(df = variants, fasta = fasta, nodeN = nodeN)
     saveRDS(object = variants, file = file.path('./slimDB', 'variants.RDS'))
-  }
+}
 
   if(updateSlimChanges == TRUE) {
 

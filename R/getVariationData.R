@@ -198,51 +198,65 @@ processVEP <- function(vcfFilePath, vepFilePath, nodeN = 4) {
     stop("Couldn't find the path to the VEP results file ",vepFilePath)
   }
 
+  #read clinvar data
+  clinvarRDS <- gsub(pattern = '.vcf', replacement = '.RDS', x = vcfFilePath)
+  if(file.exists(clinvarRDS)) {
+    clinvarData <- readRDS(clinvarRDS)
+  } else {
+    clinvarData <- vcfR::extract_info_tidy(vcfR::read.vcfR(vcfFilePath))
+    saveRDS(object = clinvarData, file = clinvarRDS)
+  }
+
   #read VEP results
-  vepRaw <- data.table::fread(vepFilePath)
-  cat("Read",nrow(vepRaw),"mappings of",nrow(unique(vepRaw[,1])),"unique variants from",vepFilePath,"\n")
+  vepRDS <- gsub(pattern = '.tsv', replacement = '.RDS', x = vepFilePath)
+  if(file.exists(vepRDS)) {
+    vep <- readRDS(vepRDS)
+  } else {
+    vepRaw <- data.table::fread(vepFilePath)
+    cat("Read",nrow(vepRaw),"mappings of",nrow(unique(vepRaw[,1])),"unique variants from",vepFilePath,"\n")
 
-  #filter for missense variants with swissprot ids
-  vep <- vepRaw[grepl(pattern = 'SWISSPROT', x = vepRaw$Extra)]
+    #filter for missense variants with swissprot ids
+    vep <- vepRaw[grepl(pattern = 'SWISSPROT', x = vepRaw$Extra)]
 
-  cat("Removing mappings that don't have a SWISSPROT ID...\n",
-      "\tkeeping",nrow(vep),"mappings of",nrow(unique(vep[,1])),
-      "unique variants from",vepFilePath,"\n")
+    cat("Removing mappings that don't have a SWISSPROT ID...\n",
+        "\tkeeping",nrow(vep),"mappings of",nrow(unique(vep[,1])),
+        "unique variants from",vepFilePath,"\n")
 
-  vep <- vep[Consequence == 'missense_variant']
+    vep <- vep[Consequence == 'missense_variant']
 
-  cat("Removing variants that don't lead to a single amino-acid substitution...\n",
-      "\tkeeping",nrow(vep),"mappings of",nrow(unique(vep[,1])),
-      "unique variants from",vepFilePath,"\n")
+    cat("Removing variants that don't lead to a single amino-acid substitution...\n",
+        "\tkeeping",nrow(vep),"mappings of",nrow(unique(vep[,1])),
+        "unique variants from",vepFilePath,"\n")
 
-  cl <- parallel::makeCluster(nodeN)
-  parallel::clusterExport(cl, varlist = c('vep'), envir = environment())
-  vep$uniprotAccession <- gsub(pattern = '(SWISSPROT=|;$)', replacement = '', do.call(c, parLapply(cl, vep$Extra, function(x) {
-    unlist(stringi::stri_extract_all(str = x, regex = 'SWISSPROT=.*?;'))
-  })))
-  parallel::stopCluster(cl)
-  colnames(vep)[1] <- 'dbSNP'
+    cl <- parallel::makeCluster(nodeN)
+    parallel::clusterExport(cl, varlist = c('vep'), envir = environment())
+    vep$uniprotAccession <- gsub(pattern = '(SWISSPROT=|;$)', replacement = '', do.call(c, parLapply(cl, vep$Extra, function(x) {
+      unlist(stringi::stri_extract_all(str = x, regex = 'SWISSPROT=.*?;'))
+    })))
+    parallel::stopCluster(cl)
+    colnames(vep)[1] <- 'dbSNP'
 
-  #remove rows where multiple amino acids are reported for missense variants
-  vep <- vep[grep('^.\\/.$', vep$Amino_acids),]
-  cat("Removed variants where multiple amino acids are reported for missense variants...\n",
-      "\tkeeping",nrow(vep),"mappings of",nrow(unique(vep[,1])),
-      "unique variants from",vepFilePath,"\n")
+    #remove rows where multiple amino acids are reported for missense variants
+    vep <- vep[grep('^.\\/.$', vep$Amino_acids),]
+    cat("Removed variants where multiple amino acids are reported for missense variants...\n",
+        "\tkeeping",nrow(vep),"mappings of",nrow(unique(vep[,1])),
+        "unique variants from",vepFilePath,"\n")
 
-  #add extra columns about the mutation positions and amino acids
-  vep$pos <- as.numeric(vep$Protein_position)
-  vep$wtAA <- gsub(pattern = '\\/.$', '', vep$Amino_acids)
-  vep$mutAA <- gsub(pattern = '^.\\/', '', vep$Amino_acids)
-  vep$RS <- as.numeric(gsub('rs', '', vep$dbSNP))
+    #add extra columns about the mutation positions and amino acids
+    vep$pos <- as.numeric(vep$Protein_position)
+    vep$wtAA <- gsub(pattern = '\\/.$', '', vep$Amino_acids)
+    vep$mutAA <- gsub(pattern = '^.\\/', '', vep$Amino_acids)
+    vep$RS <- as.numeric(gsub('rs', '', vep$dbSNP))
 
-  #add extra info from clinvar data
-  clinvarData <- vcfR::extract_info_tidy(vcfR::read.vcfR(vcfFilePath))
-  vep$CLNSIG <- clinvarData[match(vep$RS, clinvarData$RS),]$CLNSIG
-  vep$CLNDBN <- clinvarData[match(vep$RS, clinvarData$RS),]$CLNDBN
-  vep$isCommonVariant <- clinvarData[match(vep$RS, clinvarData$RS),]$COMMON
-  vep$pathogenic <- unlist(lapply(vep$CLNSIG, function(x) sum(c('4', '5') %in% unlist(strsplit(x,  split = '\\|'))) > 0))
-  vep$implicatedInAnyDisease <- gsub(pattern = "not_provided|not_specified|\\|", replacement = '', vep$CLNDBN) != ''
+    #add extra info from clinvar data
+    vep$CLNSIG <- clinvarData[match(vep$RS, clinvarData$RS),]$CLNSIG
+    vep$CLNDBN <- clinvarData[match(vep$RS, clinvarData$RS),]$CLNDBN
+    vep$isCommonVariant <- clinvarData[match(vep$RS, clinvarData$RS),]$COMMON
+    vep$pathogenic <- unlist(lapply(vep$CLNSIG, function(x) sum(c('4', '5') %in% unlist(strsplit(x,  split = '\\|'))) > 0))
+    vep$implicatedInAnyDisease <- gsub(pattern = "not_provided|not_specified|\\|", replacement = '', vep$CLNDBN) != ''
 
+    saveRDS(object = vep, file = vepRDS)
+  }
   return(vep)
 }
 
