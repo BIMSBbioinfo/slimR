@@ -415,7 +415,8 @@ findModifiedSlims <- function(regex) {
   #find all sub patterns that have round brackets around them
   matches <- slimR::locateAllRegex(sequence = regex, pattern = '\\(.*?\\)')$match
   #loop over each match to find out if there is anything excep Serine, Threonine, or Tyrosines
-  result <- c(regex, FALSE, '')
+  #result <- c(regex, FALSE, '')
+  result <- FALSE
   for (m in matches) {
     #count number of residue positions within each match
     # if the match corresponds to a single residue, then it is a modification site
@@ -427,7 +428,8 @@ findModifiedSlims <- function(regex) {
     totalSize <- sum(length(variablePositions) + length(singleAApositions))
 
     if(totalSize == 1 & nchar(rm) == 0) {
-      result = c(regex, TRUE, c(variablePositions, singleAApositions))
+      #result = c(regex, TRUE, c(variablePositions, singleAApositions))
+      result <- TRUE
       break
     }
   }
