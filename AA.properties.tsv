@@ -1,0 +1,25 @@
+Main physicochemical property	Physicochemical property sub-class	List of amino acids (single letter code)
+Charge	Negative charged	D, E
+Charge	Uncharged	A, N, C, Q, G, I, L, M, F, P, S, T, W, Y, V
+Hydropathy	Hydrophobic	A, C, I, L, M, F, W, V
+Hydropathy	Neutral	G, H, P, S, T, Y
+Hydropathy	Hydrophilic	R, N, D, Q, E, K
+Polarity	Polar	R, N, D, Q, E, H, K, S, T, Y
+Polarity	Non-polar	A, C, G, I, L, M, F, P, W, V
+Volume	Very small	A, G, S
+Volume	Small	N, D, C, P, T
+Volume	Medium	Q, E, H, V
+Volume	Large	R, I, L, K, M
+Volume	Very large	F, W, Y
+Side-chain chemistry	Aliphatic	A, G, I, L, P, V
+Side-chain chemistry	Aromatic	F, W, Y
+Side-chain chemistry	Sulfur	C, M
+Side-chain chemistry	Hydroxyl	S, T
+Side-chain chemistry	Basic	R, H, K
+Side-chain chemistry	Acidic	D, E
+Side-chain chemistry	Amide	N, Q
+Hydrogen Donor/Acceptor	Donor	R, K, W
+Hydrogen Donor/Acceptor	Acceptor	D, E
+Hydrogen Donor/Acceptor	Donor & Acceptor	N, Q, H, S, T, Y
+Hydrogen Donor/Acceptor	Neither donor nor acceptor	A, C, G, I, L, M, F, P, V
+
