@@ -9,6 +9,11 @@ combineClinVarWithHumsavar(vcfFilePath, vepFilePath, nodeN = 8)
 \arguments{
 \item{vcfFilePath}{path to VCF file containing variation data from ClinVar
 database}
+
+\item{vepFilePath}{path to the VEP results obtained from running
+variant_effect_predictor on the given vcfFilePath}
+
+\item{nodeN}{(default: 8) number of cpu nodes to use when running in parallel}
 }
 \value{
 A data.table object
