@@ -335,7 +335,7 @@ validateVariants <- function(df, fasta, nodeN = 8) {
       } else if (residues[pos] == AA) {
         status <- 'valid'
         if(pos > flankLength) {
-          flankN <- residues[c((pos-flankLength):pos)]
+          flankN <- residues[(pos-flankLength):(pos-1)]
         } else {
           flankN <- residues[1:(pos-1)]
         }
