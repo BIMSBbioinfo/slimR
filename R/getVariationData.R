@@ -316,14 +316,16 @@ combineClinVarWithHumsavar <- function(vcfFilePath, vepFilePath, nodeN = 8) {
 #' @importFrom parallel stopCluster
 #' @export
 validateVariants <- function(df, fasta, nodeN = 8) {
+  flankLength <- 7
   cl <- parallel::makeCluster(nodeN)
-  parallel::clusterExport(cl, varlist = c('df', 'fasta'), envir = environment())
-  df$validity <- parApply(cl, df, 1, function(x) {
-    uni <- x['uniprotAccession']
-    AA <- x['wtAA']
-    pos <- as.numeric(x['pos'])
-    #cat("TEST:", uni, AA, pos, unlist(strsplit(fasta[[uni]], ''))[pos], '\n')
+  parallel::clusterExport(cl, varlist = c('df', 'fasta', 'flankLength'),
+                          envir = environment())
+  validity <- data.frame(do.call(rbind, parLapply(cl, 1:nrow(df), function(i) {
+    uni <- df$uniprotAccession[i]
+    AA <- df$wtAA[i]
+    pos <- as.numeric(df$pos[i])
     status <- ''
+    flankingSequence <- ''
     if(!uni %in% names(fasta)) {
       status <- 'uni_not_available_as_fasta'
     } else {
@@ -332,12 +334,27 @@ validateVariants <- function(df, fasta, nodeN = 8) {
         status <- 'invalid'
       } else if (residues[pos] == AA) {
         status <- 'valid'
+        if(pos > flankLength) {
+          flankN <- residues[c((pos-flankLength):pos)]
+        } else {
+          flankN <- residues[1:(pos-1)]
+        }
+
+        if(length(residues) - flankLength >= pos) {
+          flankC <- residues[(pos+1):(pos+flankLength)]
+        } else {
+          flankC <- residues[(pos+1):length(residues)]
+        }
+        flankingSequence <- paste0(c(flankN, AA, flankC), collapse = '')
       } else {
         status <- 'invalid'
       }
     }
-    status
-  })
+    return(c(status, flankingSequence))
+  })), stringsAsFactors = F)
+  colnames(validity) <- c('validity', 'flankingSequence')
+  df <- cbind(df, validity)
+  stopCluster(cl)
   return(df)
 }
 
