@@ -268,6 +268,9 @@ processVEP <- function(vcfFilePath, vepFilePath, nodeN = 4) {
 #'
 #' @param vcfFilePath path to VCF file containing variation data from ClinVar
 #'   database
+#' @param vepFilePath path to the VEP results obtained from running
+#'   variant_effect_predictor on the given vcfFilePath
+#' @param nodeN (default: 8) number of cpu nodes to use when running in parallel
 #' @return A data.table object
 #'
 #' @importFrom data.table data.table
@@ -279,16 +282,18 @@ combineClinVarWithHumsavar <- function(vcfFilePath, vepFilePath, nodeN = 8) {
   cv[cv$pathogenic == TRUE]$variant <- 'Disease'
   cv[cv$pathogenic == FALSE & cv$isCommonVariant == 1,]$variant <- 'Polymorphism'
 
-  cv <- unique(subset(cv, select = c('uniprotAccession', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA')))
+  cv <- unique(subset(cv, select = c('uniprotAccession', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA', 'CLNDBN')))
+  colnames(cv) <- c('uniprotAccession', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA', 'clinvarDisease')
 
   hs <- data.table::data.table(as.data.frame(getHumSavar()))
 
   #humsavar data simplified
-  hs <- unique(subset(hs, select = c('seqnames', 'start', 'variant', 'dbSNP', 'wtAA', 'mutAA')))
-  colnames(hs) <- c('uniprotAccession', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA')
+  hs <- unique(subset(hs, select = c('seqnames', 'start', 'variant', 'dbSNP', 'wtAA', 'mutAA', 'diseaseName')))
+  colnames(hs) <- c('uniprotAccession', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA', 'humsavarDisease')
 
   combined <- merge(hs, cv, by = c('dbSNP', 'uniprotAccession', 'pos', 'wtAA', 'mutAA'), all = T)
-  colnames(combined) <- c('dbSNP', 'uniprotAccession', 'pos', 'wtAA', 'mutAA', 'humsavarVariant', 'clinvarVariant')
+  colnames(combined) <- c('dbSNP', 'uniprotAccession', 'pos', 'wtAA', 'mutAA',
+                          'humsavarVariant', 'humsavarDisease', 'clinvarVariant', 'clinvarDisease')
 
   return(combined)
 }
