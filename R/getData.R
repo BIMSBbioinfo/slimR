@@ -114,7 +114,7 @@ createDB <- function(uniprotAccessions,
                                 #for the same id. Then use the first sequence.
       if(!is.na(sequence)) {
         result <- slimR::searchSLiMs(sequence = sequence,
-                                     motifRegex = slimR::motifRegex)
+                                     motifRegex = motifRegex)
         if(is.null(result)){
           result <- 'No slims found'
         }
@@ -149,15 +149,19 @@ createDB <- function(uniprotAccessions,
     variants <- variants[uniprotAccession %in% uniprotAccessions & validity == 'valid']
     variants$key <- c(1:nrow(variants))
     ##Find Motif Changes by Mutations start###
-    diseaseVars <- unique(variants[humsavarVariant == 'Disease' | clinvarVariant == 'Disease'])
-    polymorphisms <- unique(variants[!(variants$key %in% diseaseVars$key) &
-                                       (humsavarVariant == 'Polymorphism' |
-                                          clinvarVariant == 'Polymorphism')])
+    #temporarily exclude clinvar variants
+    #diseaseVars <- unique(variants[humsavarVariant == 'Disease' | clinvarVariant == 'Disease'])
+    #polymorphisms <- unique(variants[!(variants$key %in% diseaseVars$key) &
+     #                                  (humsavarVariant == 'Polymorphism' |
+      #                                    clinvarVariant == 'Polymorphism')])
+
+    diseaseVars <- unique(variants[humsavarVariant == 'Disease'])
+    polymorphisms <- unique(variants[humsavarVariant == 'Polymorphism'])
 
     slimChangesDisease <- slimR::findMotifChangesMulti(
       sequences = fasta,
       variants = diseaseVars,
-      motifRegex = slimR::motifRegex,
+      motifRegex = motifRegex,
       nodeN = nodeN)
 
     saveRDS(object = slimChangesDisease,
@@ -167,7 +171,7 @@ createDB <- function(uniprotAccessions,
     slimChangesPolymorphisms <- slimR::findMotifChangesMulti(
       sequences = fasta,
       variants = polymorphisms,
-      motifRegex = slimR::motifRegex,
+      motifRegex = motifRegex,
       nodeN = nodeN)
     saveRDS(object = slimChangesPolymorphisms,
             file = './slimDB/slimChangesPolymorphisms.RDS')
