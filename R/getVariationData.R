@@ -111,10 +111,11 @@ parseUniprotHumanVariationData <- function (filePath, outFile = 'parseUniprotHum
 #' This function will fetch the clinvar data from the given url and parse the contents
 #' of the downloaded file.
 #'
-#' @param url The url to the ftp location of the clinvar dataset
-#'  (e.g. ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar_20170404.vcf.gz)
+#' @param url The url to the ftp location of the clinvar dataset (tab delimited
+#'   variant summary file)
+#' (e.g. ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz)
 #' @return A tibble object extracted from the downloaded vcf file
-#' @importFrom vcfR read.vcfR
+#' @importFrom data.table data.table
 #' @export
 getClinVarData <- function(url, overwrite = FALSE, parseDownloadedFile = TRUE) {
   destFile <- basename(url)
@@ -135,7 +136,7 @@ getClinVarData <- function(url, overwrite = FALSE, parseDownloadedFile = TRUE) {
     system(gunzipCommand)
     destFile <- gsub('.gz$', '', destFile)
     if(parseDownloadedFile == TRUE) {
-      clinvarData <- vcfR::extract_info_tidy(vcfR::read.vcfR(destFile))
+      clinvarData <- data.table::fread(destFile)
       return(clinvarData)
     }
   } else {

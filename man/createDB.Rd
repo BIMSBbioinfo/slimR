@@ -53,7 +53,7 @@ motif changes should be calculated to update slimChanges.RDS files for
 variants}
 }
 \description{
-Given a vectore of uniProt accessions, extract and process all available
+Given a vector of uniProt accessions, extract and process all available
 sequence features and save the resulting objects in folders and RDS objects
 for: 1. Fasta sequences 2. Disorder predictions using IUPred 3. Uniprot
 feature files downloaded in gff format 4. Uniprot variants including

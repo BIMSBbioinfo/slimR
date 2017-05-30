@@ -7,8 +7,9 @@
 getClinVarData(url, overwrite = FALSE, parseDownloadedFile = TRUE)
 }
 \arguments{
-\item{url}{The url to the ftp location of the clinvar dataset
-(e.g. ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar_20170404.vcf.gz)}
+\item{url}{The url to the ftp location of the clinvar dataset (tab delimited
+  variant summary file)
+(e.g. ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz)}
 }
 \value{
 A tibble object extracted from the downloaded vcf file
