@@ -11,6 +11,9 @@ locateAllRegex(sequence, pattern)
 
 \item{pattern}{PERL like regular expression}
 }
+\value{
+data.table data.frame object
+}
 \description{
 Finds the positions and substrings of all overlapping
 matches of regexes in a given sequence

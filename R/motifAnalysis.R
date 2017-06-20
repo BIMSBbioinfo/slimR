@@ -6,26 +6,63 @@
 #' @param sequence Protein sequence using amino acid alphabet
 #' @param motifRegex A list object where names of the list are ELM identifiers
 #'   and each list item has one ELM regex
+#' @param from integer value (default: 1) where to start the search for patterns
+#' @param to integer value (default: length of input sequence) where to end the
+#'   search
 #' @examples
 #' data("glutFasta")
 #' motifRegex <- list('TRG_ENDOCYTIC_2' = 'Y..[LMVIF]')
 #' searchSLiMs(paste(glutFasta), motifRegex)
-#' @return A vector of motif hits with the syntax:
-#' <MotifIdentifier>:<start position in sequence>:<end position in sequence>
-#' e.g.: TRG_ENDOCYTIC_2:333:340
+#' @return A vector of motif hits with the syntax: <MotifIdentifier>:<start
+#'   position in sequence>:<end position in sequence> e.g.:
+#'   TRG_ENDOCYTIC_2:333:340
 #' @export
-searchSLiMs <- function(sequence, motifRegex) {
-  hits <- lapply(X = motifRegex, function(x) {locateAllRegex(sequence = sequence,
-                                                             pattern = x)})
-  hits <- hits[lapply(hits, nrow)  > 0]
-  if (length(hits) > 0) {
-    unlist(lapply(X = c(1:length(names(hits))),
-                  FUN = function(x) {paste0(names(hits)[x],
-                                            ':', hits[[x]]$start,
-                                            ':', hits[[x]]$end)}))
-  } else {
-    return(c())
+searchSLiMs <- function(sequence, motifRegex, from = 1, to = nchar(sequence)) {
+
+  seqLen <- nchar(sequence)
+
+  if(from > seqLen | to < 1) {
+    stop("Searching coordinates must be within the limit of the sequence.
+         Choose values between 1 and ",nchar(sequence),
+         " for the 'from' and 'to' arguments respectively\n")
   }
+
+  if(from < 1) {
+    warning("Starting position to look for regex matches must be >= 1 ... setting the value of 'from' to 1")
+    from <- 1
+  }
+
+  if(to > seqLen) {
+    warning("Ending position to look for regex matches must be <= length of the input sequence.
+            Setting the value of 'to' to ",nchar(sequence),"\n")
+    to <- seqLen
+  }
+
+  sequence <- substr(sequence, from, to)
+  if (from > 1) {
+    #to avoid matching N terminal motifs when the searched
+    #string is not a prefix of the original sequence
+    sequence <- paste0("XXX", sequence)
+    from <- from - 3
+  }
+
+  if(to < seqLen) {
+    #to avoid matching C terminal motifs when the searched
+    #string is not a suffix of the original sequence
+    sequence <- paste0(sequence, "XXX")
+  }
+
+  hits <- do.call(rbind, lapply(X = names(motifRegex), function(x) {
+     m <- slimR::locateAllRegex(sequence = sequence,
+                         pattern = motifRegex[[x]])
+     if(!is.null(m)) {
+       m$start <- m$start + from - 1
+       m$end <- m$end + from - 1
+       m$SLiM <- x
+       return(m)
+      }
+     }))
+  return(hits)
 }
 
 #' locateAllRegex
@@ -35,6 +72,7 @@ searchSLiMs <- function(sequence, motifRegex) {
 #'
 #' @param sequence A character vector
 #' @param pattern PERL like regular expression
+#' @return data.table data.frame object
 #' @importFrom data.table data.table
 #' @export
 locateAllRegex <- function (sequence, pattern) {
@@ -87,10 +125,11 @@ mutateSequence <- function (sequence, pos, wtAA, mutAA) {
 #' pattern) via point amino acid substitutions in protein sequences
 #'
 #' @param sequence A character string of amino acid sequence
-#' @param variants A data.frame consisting of minimum three columns: 1.wtAA,
-#'   2.mutAA, 3.pos where pos is the mutation position in the sequence, wtAA is
-#'   the wild-type amino acid (one letter code) in the sequence and mutAA is the
-#'   mutant amino acid (one letter code).
+#' @param variants A data.frame consisting of minimum four columns:
+#'   1.uniprotAcc, 2.wtAA, 3.mutAA, 4.pos where pos is the mutation position in
+#'   the sequence, wtAA is the wild-type amino acid (one letter code) in the
+#'   sequence and mutAA is the mutant amino acid (one letter code).
+#' @return data.table data.frame object
 #' @examples
 #' c <- findMotifChanges(sequence = paste(glutFasta),
 #'                       variants = glutMutations,
@@ -103,73 +142,68 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
          wtAA, mutAA, and pos")
   }
 
-  #find SLiMs in the wild-type sequence
-  wtMotifs <- searchSLiMs(sequence = sequence, motifRegex = motifRegex)
+  variants$wtAA <- as.character(variants$wtAA)
+  variants$mutAA <- as.character(variants$mutAA)
+  variants$pos <- as.numeric(variants$pos)
+
+  wtMotifsAll <- slimR::searchSLiMs(sequence = sequence, motifRegex = motifRegex)
+  wtMotifsAll$ID <- apply(wtMotifsAll, 1,
+                          function(x) gsub(' ', '', paste0(c(x['SLiM'], x['start'], x['end']), collapse = ':')))
+
   #for each variant find the list of motif hits that would be gained/lost
   #if the sequence had that substitution mutation
+  change <- do.call(rbind, lapply(1:nrow(variants), function(i) {
+    wtAA <- variants$wtAA[i]
+    mutAA <- variants$mutAA[i]
+    pos <- variants$pos[i]
 
-  lostMotifs <- c()
-  gainedMotifs <- c()
-  neutralVars <- c() #Variants that don't cause any changes in motif content
+    mutSeq <- slimR::mutateSequence(sequence = sequence,
+                                    pos = pos,
+                                    wtAA = wtAA,
+                                    mutAA = mutAA)
 
-  for (i in 1:nrow(variants)) {
-    wtAA <- as.character(variants$wtAA[i])
-    mutAA <- as.character(variants$mutAA[i])
-    pos <- as.integer(variants$pos[i])
+    mutMotifs <- slimR::searchSLiMs(sequence = mutSeq, motifRegex = motifRegex, from = pos - 31, to = pos + 30)
+    #filter mutMotifs for those that overlap variant position
+    mutMotifs <- mutMotifs[pos >= start & pos <= end]
+    mutMotifs$ID <- apply(mutMotifs, 1,
+                          function(x) gsub(' ', '', paste0(c(x['SLiM'], x['start'], x['end']), collapse = ':')))
 
-    mutSeq <- mutateSequence(sequence = sequence,
-                             pos = pos,
-                             wtAA = wtAA,
-                             mutAA = mutAA)
+    #filter wtMotifs for those that overlap variant position
+    wtMotifs <- wtMotifsAll[pos >= start & pos <= end]
 
-    mutMotifs <- searchSLiMs(sequence = mutSeq, motifRegex = motifRegex)
+    lost <- wtMotifs[which(wtMotifs$ID %in% setdiff(wtMotifs$ID, mutMotifs$ID)),]
+    gained <- mutMotifs[which(mutMotifs$ID %in% setdiff(mutMotifs$ID, wtMotifs$ID)),]
 
-    lost <- setdiff(wtMotifs, mutMotifs)
-    if (length(lost) > 0) {
-      lostMotifs <- c(lostMotifs,
-                      paste(wtAA, mutAA, pos,
-                            lost, 'lost', sep = ':'))
+    lost$type <- 'lost'
+    gained$type <- 'gained'
+
+    if(nrow(lost) > 0 || nrow(gained) > 0){
+      result <- rbind(lost,gained)
+      result$wtAA <- wtAA
+      result$mutAA <- mutAA
+      result$pos <- pos
+      result$uniprotAcc <- variants$uniprotAcc[i]
+      return(result)
     }
+  }))
 
-    gained <- setdiff(mutMotifs, wtMotifs)
+  change <- subset(change, select = c('uniprotAcc', 'wtAA', 'mutAA', 'pos',
+                                      'SLiM', 'start', 'end', 'type', 'match'))
 
-    if (length(gained) > 0) {
-      gainedMotifs <- c(gainedMotifs,
-                        paste(wtAA, mutAA, pos,
-                              gained, 'gained', sep = ':'))
-    }
-
-    if(length(lost) == 0 & length(gained) == 0){
-      neutralVars <- c(neutralVars, paste(wtAA, mutAA, pos,
-                             "None:0:0",
-                             'NoChange', sep = ':'))
-    }
-
-  }
-  change <- c(lostMotifs, gainedMotifs, neutralVars)
-
-  wtSeq <- unlist(strsplit(sequence, split = ''))
-  change <- data.frame(do.call(rbind,
-                               strsplit(change, ':')),
-                       stringsAsFactors = FALSE)
-  colnames(change) <- c('wtAA', 'mutAA', 'pos',
+  colnames(change) <- c('uniprotAcc', 'wtAA', 'mutAA', 'pos',
                         'SLiM', 'SLiM_start', 'SLiM_end',
-                        'change')
-  change$RegEx <- motifRegex[change$SLiM]
-  change$SLiM_Sequence <- lapply(X = 1:nrow(change),
-                                 FUN = function (x) {
-                                   if(change$change[x] == 'NoChange'){
-                                     "None"
-                                   } else {
-                                     paste(wtSeq[change$SLiM_start[x]:change$SLiM_end[x]],
-                                           collapse = '')
-                                   }
-                                   })
-  change$SLiM_start <- as.numeric(change$SLiM_start)
-  change$SLiM_end <- as.numeric(change$SLiM_end)
-  change$pos <- as.numeric(change$pos)
+                        'change', 'SLiM_Sequence')
+
+  change$RegEx <- paste(motifRegex[change$SLiM])
+
+  unChanged <- dplyr::setdiff(variants, change[,c('uniprotAcc', 'wtAA', 'mutAA', 'pos')])
+  unChanged <- cbind(unChanged, 'SLiM' = 'None', 'SLiM_start' = 0, 'SLiM_end' = 0,
+                     'change' = 'NoChange', 'SLiM_Sequence' = 'None', 'RegEx' = 'None')
+
+  change <- rbind(change, unChanged)
+
   return(change)
-}
+  }
 
 
 

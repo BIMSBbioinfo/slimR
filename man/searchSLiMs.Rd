@@ -4,18 +4,23 @@
 \alias{searchSLiMs}
 \title{searchSLiMs}
 \usage{
-searchSLiMs(sequence, motifRegex)
+searchSLiMs(sequence, motifRegex, from = 1, to = nchar(sequence))
 }
 \arguments{
 \item{sequence}{Protein sequence using amino acid alphabet}
 
 \item{motifRegex}{A list object where names of the list are ELM identifiers
 and each list item has one ELM regex}
+
+\item{from}{integer value (default: 1) where to start the search for patterns}
+
+\item{to}{integer value (default: length of input sequence) where to end the
+search}
 }
 \value{
-A vector of motif hits with the syntax:
-<MotifIdentifier>:<start position in sequence>:<end position in sequence>
-e.g.: TRG_ENDOCYTIC_2:333:340
+A vector of motif hits with the syntax: <MotifIdentifier>:<start
+  position in sequence>:<end position in sequence> e.g.:
+  TRG_ENDOCYTIC_2:333:340
 }
 \description{
 Using regular expressions of SLiMs, find all matches of given SLiM patterns

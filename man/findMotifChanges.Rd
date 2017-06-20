@@ -9,10 +9,10 @@ findMotifChanges(sequence, variants, motifRegex = slimR::motifRegex)
 \arguments{
 \item{sequence}{A character string of amino acid sequence}
 
-\item{variants}{A data.frame consisting of minimum three columns: 1.wtAA,
-2.mutAA, 3.pos where pos is the mutation position in the sequence, wtAA is
-the wild-type amino acid (one letter code) in the sequence and mutAA is the
-mutant amino acid (one letter code).}
+\item{variants}{A data.frame consisting of minimum four columns:
+1.uniprotAcc, 2.wtAA, 3.mutAA, 4.pos where pos is the mutation position in
+the sequence, wtAA is the wild-type amino acid (one letter code) in the
+sequence and mutAA is the mutant amino acid (one letter code).}
 }
 \description{
 Find out which SLiMs are gained or lost (no longer matching the regex
