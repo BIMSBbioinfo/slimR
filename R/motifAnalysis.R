@@ -130,6 +130,7 @@ mutateSequence <- function (sequence, pos, wtAA, mutAA) {
 #'   the sequence, wtAA is the wild-type amino acid (one letter code) in the
 #'   sequence and mutAA is the mutant amino acid (one letter code).
 #' @return data.table data.frame object
+#' @importFrom dplyr setdiff
 #' @examples
 #' c <- findMotifChanges(sequence = paste(glutFasta),
 #'                       variants = glutMutations,

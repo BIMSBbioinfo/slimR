@@ -14,6 +14,9 @@ findMotifChanges(sequence, variants, motifRegex = slimR::motifRegex)
 the sequence, wtAA is the wild-type amino acid (one letter code) in the
 sequence and mutAA is the mutant amino acid (one letter code).}
 }
+\value{
+data.table data.frame object
+}
 \description{
 Find out which SLiMs are gained or lost (no longer matching the regex
 pattern) via point amino acid substitutions in protein sequences
