@@ -114,10 +114,11 @@ parseUniprotHumanVariationData <- function (filePath, outFile = 'parseUniprotHum
 #' @param url The url to the ftp location of the clinvar dataset (tab delimited
 #'   variant summary file)
 #' (e.g. ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz)
-#' @return A tibble object extracted from the downloaded vcf file
-#' @importFrom data.table data.table
+#' @param overwrite default: FALSE, boolean value to decide if a fresh download
+#'   should overwrite the existing file
+#' @return Path to the downloaded and unzipped file
 #' @export
-getClinVarData <- function(url, overwrite = FALSE, parseDownloadedFile = TRUE) {
+getClinVarData <- function(url, overwrite = FALSE) {
   destFile <- basename(url)
   if(overwrite == TRUE) {
     download.file(url = url, destfile = destFile)
@@ -126,7 +127,6 @@ getClinVarData <- function(url, overwrite = FALSE, parseDownloadedFile = TRUE) {
       download.file(url = url, destfile = destFile)
     }
   }
-
   if(file.exists(destFile)) {
     if(overwrite == TRUE) {
       gunzipCommand <- paste('gunzip -f',destFile)
@@ -134,11 +134,8 @@ getClinVarData <- function(url, overwrite = FALSE, parseDownloadedFile = TRUE) {
       gunzipCommand <- paste('gunzip',destFile)
     }
     system(gunzipCommand)
-    destFile <- gsub('.gz$', '', destFile)
-    if(parseDownloadedFile == TRUE) {
-      clinvarData <- data.table::fread(destFile)
-      return(clinvarData)
-    }
+    destFile <- file.path(getwd(), gsub('.gz$', '', destFile))
+    return(destFile)
   } else {
     stop("Couldn't find",destFile,"to parse the results.
          Probably the download didn't work\n")
@@ -147,29 +144,29 @@ getClinVarData <- function(url, overwrite = FALSE, parseDownloadedFile = TRUE) {
 
 #' runVEP
 #'
-#' A wrapper function to run Ensembl's variant_effect_predictor script for a
-#' given vcf file.
+#' A wrapper function to run Ensembl's variant_effect_predictor script
 #'
 #' @param vepPATH path to the variant_effect_predictor.pl script
-#' @param vcfFilePath path to VCF file containing variation data
-#'
+#' @param inputFileName path to input file that contains variation data in a
+#'   format acceptable to variant_effect_predictor software (see:
+#'   http://www.ensembl.org/info/docs/tools/vep/vep_formats.html#default)
+#' @param outputFileName file name to write the results
+#' @param overwrite (default: FALSE) set it to TRUE to overwrite the existing
+#'   VEP output file.
 #' @return a data.table data.frame containing variation data read from VEP
 #'   output
 #'
 #' @importFrom data.table fread
 #' @export
 runVEP <- function(vepPATH = '/home/buyar/.local/bin/variant_effect_predictor.pl',
-                   vcfFilePath,
+                   inputFileName,
+                   outputFileName = 'VEPresults.tsv',
                    overwrite = FALSE,
-                   parseResultFile = FALSE) {
-  vepOutFile <- gsub(pattern = '.vcf$', replacement = '.VEP.tsv', x = vcfFilePath)
-  if(!file.exists(vepOutFile) | (file.exists(vepOutFile) & overwrite == TRUE)) {
-    system(paste(vepPATH,'-i',vcfFilePath,' -o',vepOutFile,' --cache --uniprot --force_overwrite'))
+                   nodeN = 4) {
+  if(!file.exists(outputFileName) | (file.exists(outputFileName) & overwrite == TRUE)) {
+    system(paste(vepPATH,'-i',inputFileName,' -o',outputFileName,' --cache --uniprot --force_overwrite --fork',nodeN))
   }
-  if(parseResultFile == TRUE) {
-    vepData <- data.table::fread(vepOutFile)
-    return(vepData)
-  }
+  return(outputFileName)
 }
 
 #' processVEP
@@ -178,39 +175,23 @@ runVEP <- function(vepPATH = '/home/buyar/.local/bin/variant_effect_predictor.pl
 #' missense variants and create some columns that are useful to assess the
 #' pathogenicity of variants
 #'
-#' @param vcfFilePath path to VCF file containing variation data
 #' @param vepFilePath path to the VEP results obtained from running
 #'   variant_effect_predictor on the given vcfFilePath
-#' @param nodeN (default: 8) Number of cores to use for parallel processing
+#' @param nodeN (default: 4) Number of cores to use for parallel processing
 #' @importFrom data.table fread
 #' @importFrom parallel makeCluster
 #' @importFrom parallel clusterExport
 #' @importFrom parallel stopCluster
-#' @importFrom vcfR read.vcfR
-#' @importFrom vcfR extract_info_tidy
 #' @return A data.table object
 #' @export
-processVEP <- function(vcfFilePath, vepFilePath, nodeN = 4) {
-  if(!file.exists(vcfFilePath)) {
-    stop("Couldn't find the path to the vcf file ",vcfFilePath)
-  }
-
+processVEP <- function(vepFilePath, overwriteRDS = FALSE, nodeN = 4) {
   if(!file.exists(vepFilePath)) {
     stop("Couldn't find the path to the VEP results file ",vepFilePath)
   }
 
-  #read clinvar data
-  clinvarRDS <- gsub(pattern = '.vcf', replacement = '.RDS', x = vcfFilePath)
-  if(file.exists(clinvarRDS)) {
-    clinvarData <- readRDS(clinvarRDS)
-  } else {
-    clinvarData <- vcfR::extract_info_tidy(vcfR::read.vcfR(vcfFilePath))
-    saveRDS(object = clinvarData, file = clinvarRDS)
-  }
-
   #read VEP results
-  vepRDS <- gsub(pattern = '.tsv', replacement = '.RDS', x = vepFilePath)
-  if(file.exists(vepRDS)) {
+  vepRDS <- paste0(vepFilePath, '.RDS')
+  if(file.exists(vepRDS) & overwriteRDS == FALSE) {
     vep <- readRDS(vepRDS)
   } else {
     vepRaw <- data.table::fread(vepFilePath)
@@ -235,7 +216,7 @@ processVEP <- function(vcfFilePath, vepFilePath, nodeN = 4) {
       unlist(stringi::stri_extract_all(str = x, regex = 'SWISSPROT=.*?;'))
     })))
     parallel::stopCluster(cl)
-    colnames(vep)[1] <- 'dbSNP'
+    colnames(vep)[1] <- 'Identifier'
 
     #remove rows where multiple amino acids are reported for missense variants
     vep <- vep[grep('^.\\/.$', vep$Amino_acids),]
@@ -247,19 +228,71 @@ processVEP <- function(vcfFilePath, vepFilePath, nodeN = 4) {
     vep$pos <- as.numeric(vep$Protein_position)
     vep$wtAA <- gsub(pattern = '\\/.$', '', vep$Amino_acids)
     vep$mutAA <- gsub(pattern = '^.\\/', '', vep$Amino_acids)
-    vep$RS <- as.numeric(gsub('rs', '', vep$dbSNP))
-
-    #add extra info from clinvar data
-    vep$CLNSIG <- clinvarData[match(vep$RS, clinvarData$RS),]$CLNSIG
-    vep$CLNDBN <- clinvarData[match(vep$RS, clinvarData$RS),]$CLNDBN
-    vep$isCommonVariant <- clinvarData[match(vep$RS, clinvarData$RS),]$COMMON
-    vep$pathogenic <- unlist(lapply(vep$CLNSIG, function(x) sum(c('4', '5') %in% unlist(strsplit(x,  split = '\\|'))) > 0))
-    vep$implicatedInAnyDisease <- gsub(pattern = "not_provided|not_specified|\\|", replacement = '', vep$CLNDBN) != ''
 
     saveRDS(object = vep, file = vepRDS)
   }
   return(vep)
 }
+
+#' getClinVarVEPmissenseVariants
+#'
+#' This function downloads ClinVar variants and runs variant_effect_predictor
+#' (VEP) tool and merges the clinvar variants with missense variants predicted
+#' by VEP.
+#'
+#' @return A data.table object
+#' @export
+getClinVarVEPmissenseVariants <- function(vepPath, clinvarDataURL, overwrite = FALSE, nodeN = 4) {
+
+  rdsFile <- file.path('./slimDB', 'clinvar_VEP_missenseVariants.RDS')
+  if(file.exists(rdsFile) & overwrite == FALSE) {
+    return(readRDS(rdsFile))
+  } else {
+    clinvarDataFile <- getClinVarData(url = clinvarDataURL,
+                                      overwrite = overwrite)
+    clinvarData <- data.table::fread(clinvarDataFile)
+
+    clinvarData <- clinvarData[Type == 'single nucleotide variant' &
+                                 Assembly == 'GRCh38']
+
+    #subset the clinvar data by columns, write to a file and pass to runVEP
+    #function
+    clinvarData$Allele <- paste(clinvarData$ReferenceAllele,
+                                clinvarData$AlternateAllele, sep = '/')
+    #clinvar uses the positive strand as reference nucleotide
+    clinvarData$Strand <- '+'
+    clinvarData$Name <- gsub(' ', '_', clinvarData$Name)
+    # identifier created to uniquely refer to every row in the data table. this
+    # is used as input to VEP and later used to merge VEP results with some of
+    # the clinvarData fields (e.g. dbSNP id etc)
+    clinvarData$Identifier <- paste(clinvarData$Chromosome, clinvarData$Start,
+                                    clinvarData$Stop, clinvarData$Name,
+                                    sep = ':')
+    write.table(x = clinvarData[,c('Chromosome', 'Start', 'Stop',
+                                   'Allele', 'Strand', 'Identifier')],
+                file = 'clinvarData.processed.tsv', quote = F,
+                sep = '\t', row.names = F, col.names = F)
+
+    runVEP(vepPATH = vepPath,
+           inputFileName = 'clinvarData.processed.tsv',
+           outputFileName = 'clinvarData.processed.VEPoutput.tsv',
+           overwrite = TRUE,
+           nodeN = nodeN)
+
+    vep <- processVEP(vepFilePath = 'clinvarData.processed.VEPoutput.tsv',
+                      overwriteRDS = TRUE,
+                      nodeN = nodeN)
+
+    #merge vep data with clinvar data (notice that vep results will only contain
+    #missense-variants, so the clinvar data will be down-sized to only those
+    #that have a calculated consequence of 'missense variant' according to vep)
+    clinvarVEPdata <- merge(clinvarData, vep, by = 'Identifier')
+    saveRDS(object = clinvarVEPdata,
+            file = rdsFile)
+    return(clinvarVEPdata)
+  }
+}
+
 
 #' combineClinVarWithHumsavar
 #'
@@ -267,34 +300,34 @@ processVEP <- function(vcfFilePath, vepFilePath, nodeN = 4) {
 #' clinvar variants (output of runVEP) and merges into a simplified data.table
 #' object
 #'
-#' @param vcfFilePath path to VCF file containing variation data from ClinVar
+#' @param clinvarVEPdata path to VCF file containing variation data from ClinVar
 #'   database
-#' @param vepFilePath path to the VEP results obtained from running
-#'   variant_effect_predictor on the given vcfFilePath
-#' @param nodeN (default: 8) number of cpu nodes to use when running in parallel
 #' @return A data.table object
 #'
 #' @importFrom data.table data.table
 #' @export
-combineClinVarWithHumsavar <- function(vcfFilePath, vepFilePath, nodeN = 8) {
-  #clinvar VEP results simplified
-  cv <- processVEP(vcfFilePath, vepFilePath, nodeN = nodeN)
-  cv$variant <- 'Unclassified'
-  cv[cv$pathogenic == TRUE]$variant <- 'Disease'
-  cv[cv$pathogenic == FALSE & cv$isCommonVariant == 1,]$variant <- 'Polymorphism'
+combineClinVarWithHumsavar <- function(clinvarVEPdata) {
 
-  cv <- unique(subset(cv, select = c('uniprotAccession', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA', 'CLNDBN')))
-  colnames(cv) <- c('uniprotAccession', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA', 'clinvarDisease')
+  cv <- unique(subset(clinvarVEPdata,
+                      select = c('uniprotAccession', 'pos', 'ClinSigSimple',
+                                 'RS# (dbSNP)', 'wtAA', 'mutAA', 'PhenotypeList')))
+  colnames(cv) <- c('uniprotAccession', 'pos', 'variant', 'dbSNP',
+                    'wtAA', 'mutAA', 'clinvarDisease')
+  cv$variant <- ifelse(cv$variant == 1, 'Disease', 'Polymorphism')
+  cv$dbSNP <- paste0('rs', cv$dbSNP)
 
   hs <- data.table::data.table(as.data.frame(getHumSavar()))
 
   #humsavar data simplified
-  hs <- unique(subset(hs, select = c('seqnames', 'start', 'variant', 'dbSNP', 'wtAA', 'mutAA', 'diseaseName')))
-  colnames(hs) <- c('uniprotAccession', 'pos', 'variant', 'dbSNP', 'wtAA', 'mutAA', 'humsavarDisease')
+  hs <- unique(subset(hs, select = c('seqnames', 'start', 'variant',
+                                     'dbSNP', 'wtAA', 'mutAA', 'diseaseName')))
+  colnames(hs) <- c('uniprotAccession', 'pos', 'variant', 'dbSNP',
+                    'wtAA', 'mutAA', 'humsavarDisease')
 
   combined <- merge(hs, cv, by = c('dbSNP', 'uniprotAccession', 'pos', 'wtAA', 'mutAA'), all = T)
   colnames(combined) <- c('dbSNP', 'uniprotAccession', 'pos', 'wtAA', 'mutAA',
-                          'humsavarVariant', 'humsavarDisease', 'clinvarVariant', 'clinvarDisease')
+                          'humsavarVariant', 'humsavarDisease',
+                          'clinvarVariant', 'clinvarDisease')
 
   return(combined)
 }

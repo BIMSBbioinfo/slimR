@@ -4,15 +4,13 @@
 \alias{processVEP}
 \title{processVEP}
 \usage{
-processVEP(vcfFilePath, vepFilePath, nodeN = 4)
+processVEP(vepFilePath, overwriteRDS = FALSE, nodeN = 4)
 }
 \arguments{
-\item{vcfFilePath}{path to VCF file containing variation data}
-
 \item{vepFilePath}{path to the VEP results obtained from running
 variant_effect_predictor on the given vcfFilePath}
 
-\item{nodeN}{(default: 8) Number of cores to use for parallel processing}
+\item{nodeN}{(default: 4) Number of cores to use for parallel processing}
 }
 \value{
 A data.table object

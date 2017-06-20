@@ -4,15 +4,18 @@
 \alias{getClinVarData}
 \title{getClinVarData}
 \usage{
-getClinVarData(url, overwrite = FALSE, parseDownloadedFile = TRUE)
+getClinVarData(url, overwrite = FALSE)
 }
 \arguments{
 \item{url}{The url to the ftp location of the clinvar dataset (tab delimited
   variant summary file)
 (e.g. ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz)}
+
+\item{overwrite}{default: FALSE, boolean value to decide if a fresh download
+should overwrite the existing file}
 }
 \value{
-A tibble object extracted from the downloaded vcf file
+Path to the downloaded and unzipped file
 }
 \description{
 This function will fetch the clinvar data from the given url and parse the contents

@@ -5,18 +5,25 @@
 \title{runVEP}
 \usage{
 runVEP(vepPATH = "/home/buyar/.local/bin/variant_effect_predictor.pl",
-  vcfFilePath, overwrite = FALSE, parseResultFile = FALSE)
+  inputFileName, outputFileName = "VEPresults.tsv", overwrite = FALSE,
+  nodeN = 4)
 }
 \arguments{
 \item{vepPATH}{path to the variant_effect_predictor.pl script}
 
-\item{vcfFilePath}{path to VCF file containing variation data}
+\item{inputFileName}{path to input file that contains variation data in a
+format acceptable to variant_effect_predictor software (see:
+http://www.ensembl.org/info/docs/tools/vep/vep_formats.html#default)}
+
+\item{outputFileName}{file name to write the results}
+
+\item{overwrite}{(default: FALSE) set it to TRUE to overwrite the existing
+VEP output file.}
 }
 \value{
 a data.table data.frame containing variation data read from VEP
   output
 }
 \description{
-A wrapper function to run Ensembl's variant_effect_predictor script for a
-given vcf file.
+A wrapper function to run Ensembl's variant_effect_predictor script
 }

@@ -35,14 +35,17 @@ searchSLiMs <- function(sequence, motifRegex) {
 #'
 #' @param sequence A character vector
 #' @param pattern PERL like regular expression
+#' @importFrom data.table data.table
 #' @export
 locateAllRegex <- function (sequence, pattern) {
   startPos <- pracma::refindall(s = sequence, pat = pattern)
   matchSeq <- unlist(lapply(startPos, function(x) {
     pracma::regexp(s = substring(sequence, x), pat = pattern, once = TRUE)$match
-    }))
+  }))
   endPos <- startPos + nchar(matchSeq) - 1
-  return(data.frame('start' = startPos, 'end' = endPos, 'match' = matchSeq, stringsAsFactors = FALSE))
+  if(!is.null(startPos)) {
+    return(data.table::data.table('start' = startPos, 'end' = endPos, 'match' = matchSeq))
+  }
 }
 
 #' mutateSequence
@@ -167,6 +170,9 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
   change$pos <- as.numeric(change$pos)
   return(change)
 }
+
+
+
 
 #' findMotifChangesMulti
 #'

@@ -18,7 +18,7 @@
 #' @param vepPath Path to variant effect predictor script default:
 #'   '/home/buyar/.local/bin/variant_effect_predictor.pl',
 #' @param clinvarDataURL URL to download clinvar data default:
-#'   'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar_20170404.vcf.gz',
+#'   'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz',
 #' @param workingDirectory Path to folder where the database should be created
 #' @param nodeN Number of cores to run the database generation.
 #' @param overwrite TRUE/FALSE (default: FALSE) Boolean value to decide if the
@@ -43,7 +43,7 @@
 createDB <- function(uniprotAccessions,
                      iupredPath = '/home/buyar/tools/iupred',
                      vepPath = '/home/buyar/.local/bin/variant_effect_predictor.pl',
-                     clinvarDataURL = 'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar_20170404.vcf.gz',
+                     clinvarDataURL = 'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz',
                      motifRegex = slimR::motifRegex,
                      workingDirectory = getwd(),
                      nodeN = 1,
@@ -131,13 +131,14 @@ createDB <- function(uniprotAccessions,
 
   if(updateVariants == TRUE) {
     fasta <- readRDS('./slimDB/fasta.RDS')
-    getClinVarData(url = clinvarDataURL, overwrite = overwrite, parseDownloadedFile = FALSE)
-    vcfFilePath <- file.path(workingDirectory, gsub('.gz$', '', basename(clinvarDataURL)))
-    runVEP(vepPATH = vepPath, vcfFilePath = vcfFilePath, overwrite = overwrite)
-    vepFilePath <- gsub('.vcf$', '.VEP.tsv', vcfFilePath)
-    variants <- combineClinVarWithHumsavar(vcfFilePath = vcfFilePath,
-                               vepFilePath = vepFilePath,
-                               nodeN = nodeN)
+
+    clinvarVEPdata <- getClinVarVEPmissenseVariants(vepPath = vepPath,
+                                            clinvarDataURL = clinvarDataURL,
+                                            overwrite = TRUE,
+                                            nodeN = nodeN)
+
+    variants <- combineClinVarWithHumsavar(clinvarVEPdata)
+
     variants <- validateVariants(df = variants, fasta = fasta, nodeN = nodeN)
     saveRDS(object = variants, file = file.path('./slimDB', 'variants.RDS'))
 }
@@ -149,14 +150,10 @@ createDB <- function(uniprotAccessions,
     variants <- variants[uniprotAccession %in% uniprotAccessions & validity == 'valid']
     variants$key <- c(1:nrow(variants))
     ##Find Motif Changes by Mutations start###
-    #temporarily exclude clinvar variants
-    #diseaseVars <- unique(variants[humsavarVariant == 'Disease' | clinvarVariant == 'Disease'])
-    #polymorphisms <- unique(variants[!(variants$key %in% diseaseVars$key) &
-     #                                  (humsavarVariant == 'Polymorphism' |
-      #                                    clinvarVariant == 'Polymorphism')])
-
-    diseaseVars <- unique(variants[humsavarVariant == 'Disease'])
-    polymorphisms <- unique(variants[humsavarVariant == 'Polymorphism'])
+    diseaseVars <- unique(variants[humsavarVariant == 'Disease' | clinvarVariant == 'Disease'])
+    polymorphisms <- unique(variants[!(variants$key %in% diseaseVars$key) &
+                                       (humsavarVariant == 'Polymorphism' |
+                                          clinvarVariant == 'Polymorphism')])
 
     slimChangesDisease <- slimR::findMotifChangesMulti(
       sequences = fasta,

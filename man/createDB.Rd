@@ -6,7 +6,7 @@
 \usage{
 createDB(uniprotAccessions, iupredPath = "/home/buyar/tools/iupred",
   vepPath = "/home/buyar/.local/bin/variant_effect_predictor.pl",
-  clinvarDataURL = "ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar_20170404.vcf.gz",
+  clinvarDataURL = "ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz",
   motifRegex = slimR::motifRegex, workingDirectory = getwd(), nodeN = 1,
   overwrite = FALSE, updateFasta = TRUE, updateGff = TRUE,
   updateIupred = TRUE, updateSlims = TRUE, updateVariants = TRUE,
@@ -23,7 +23,7 @@ createDB(uniprotAccessions, iupredPath = "/home/buyar/tools/iupred",
 '/home/buyar/.local/bin/variant_effect_predictor.pl',}
 
 \item{clinvarDataURL}{URL to download clinvar data default:
-'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar_20170404.vcf.gz',}
+'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz',}
 
 \item{workingDirectory}{Path to folder where the database should be created}
 
