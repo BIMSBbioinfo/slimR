@@ -23,7 +23,6 @@ Depends:
     doParallel,
     GenomicRanges,
     data.table,
-    vcfR,
     parallel
 License: Artistic-2.0
 LazyData: TRUE
