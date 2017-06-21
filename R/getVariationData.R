@@ -309,15 +309,37 @@ getClinVarVEPmissenseVariants <- function(vepPath = '/home/buyar/.local/bin/vari
 #' @importFrom data.table data.table
 #' @export
 combineClinVarWithHumsavar <- function(clinvarVEPdata) {
-
+  #1. reformat clinvar data
   cv <- unique(subset(clinvarVEPdata,
-                      select = c('uniprotAccession', 'pos', 'ClinSigSimple',
+                      select = c('uniprotAccession', 'pos', 'ClinicalSignificance',
                                  'RS# (dbSNP)', 'wtAA', 'mutAA', 'PhenotypeList')))
   colnames(cv) <- c('uniprotAccession', 'pos', 'variant', 'dbSNP',
                     'wtAA', 'mutAA', 'clinvarDisease')
-  cv$variant <- ifelse(cv$variant == 1, 'Disease', 'Polymorphism')
-  cv$dbSNP <- paste0('rs', cv$dbSNP)
 
+  #further process and filter clinvar data - only keep entries with good
+  #confidence of being either disease-related or confidently benign
+  cv <- cv[unlist(lapply(cv$variant, function(x) sum(c('Pathogenic', 'Pathogenic/Likely pathogenic', 'Benign') %in% unlist(strsplit(x, ','))) > 0))]
+  #remove pathogenic variants that don't have a specified disease name
+  cv$clinvarDisease <- unlist(lapply(cv$clinvarDisease,
+                                     function(x) {
+                                       update <- setdiff(unlist(strsplit(x, ';')),
+                                                         c('not specified', 'not provided'))
+                                       if(length(update) > 1){
+                                         return(paste0(update, collapse = '; '))
+                                       } else if (length(update) == 1){
+                                         return(update)
+                                       } else {
+                                         return(NA)
+                                       }}))
+  cv <- cv[!(grepl('Pathogenic', cv$variant, ignore.case = T) & is.na(clinvarDisease))]
+
+  cv$dbSNP <- ifelse(cv$dbSNP == -1, '-', paste0('rs', cv$dbSNP))
+
+  #map terms to 'Disease' or 'Polymorphism'
+  cv[grepl('Pathogenic', cv$variant, ignore.case = T)]$variant <- 'Disease'
+  cv[grepl('Benign', cv$variant, ignore.case = T)]$variant <- 'Polymorphism'
+
+  #2. get humsavar data
   hs <- data.table::data.table(as.data.frame(getHumSavar()))
 
   #humsavar data simplified
@@ -326,13 +348,19 @@ combineClinVarWithHumsavar <- function(clinvarVEPdata) {
   colnames(hs) <- c('uniprotAccession', 'pos', 'variant', 'dbSNP',
                     'wtAA', 'mutAA', 'humsavarDisease')
 
+  #subset to get only disease or polymorphism variants
+  hs <- hs[variant %in% c('Disease', 'Polymorphism')]
+
   combined <- merge(hs, cv, by = c('dbSNP', 'uniprotAccession', 'pos', 'wtAA', 'mutAA'), all = T)
   colnames(combined) <- c('dbSNP', 'uniprotAccession', 'pos', 'wtAA', 'mutAA',
                           'humsavarVariant', 'humsavarDisease',
                           'clinvarVariant', 'clinvarDisease')
 
+  combined <- unique(combined)
+
   return(combined)
 }
+
 
 #' validateVariants
 #'

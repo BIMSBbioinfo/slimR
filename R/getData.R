@@ -149,7 +149,8 @@ createDB <- function(uniprotAccessions,
     variants <- readRDS('./slimDB/variants.RDS')
     variants <- variants[uniprotAccession %in% uniprotAccessions & validity == 'valid']
     variants$key <- c(1:nrow(variants))
-    ##Find Motif Changes by Mutations start###
+
+    ##Find Motif Changes by Mutations###
     diseaseVars <- unique(variants[humsavarVariant == 'Disease' | clinvarVariant == 'Disease'])
     polymorphisms <- unique(variants[!(variants$key %in% diseaseVars$key) &
                                        (humsavarVariant == 'Polymorphism' |
