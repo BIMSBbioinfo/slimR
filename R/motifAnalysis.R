@@ -126,7 +126,7 @@ mutateSequence <- function (sequence, pos, wtAA, mutAA) {
 #'
 #' @param sequence A character string of amino acid sequence
 #' @param variants A data.frame consisting of minimum four columns:
-#'   1.uniprotAcc, 2.wtAA, 3.mutAA, 4.pos where pos is the mutation position in
+#'   1.uniprotAccession, 2.wtAA, 3.mutAA, 4.pos where pos is the mutation position in
 #'   the sequence, wtAA is the wild-type amino acid (one letter code) in the
 #'   sequence and mutAA is the mutant amino acid (one letter code).
 #' @return data.table data.frame object
@@ -188,16 +188,16 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
     }
   }))
 
-  change <- subset(change, select = c('uniprotAcc', 'wtAA', 'mutAA', 'pos',
+  change <- subset(change, select = c('uniprotAccession', 'wtAA', 'mutAA', 'pos',
                                       'SLiM', 'start', 'end', 'type', 'match'))
 
-  colnames(change) <- c('uniprotAcc', 'wtAA', 'mutAA', 'pos',
+  colnames(change) <- c('uniprotAccession', 'wtAA', 'mutAA', 'pos',
                         'SLiM', 'SLiM_start', 'SLiM_end',
                         'change', 'SLiM_Sequence')
 
   change$RegEx <- paste(motifRegex[change$SLiM])
 
-  unChanged <- dplyr::setdiff(variants, change[,c('uniprotAcc', 'wtAA', 'mutAA', 'pos')])
+  unChanged <- dplyr::setdiff(variants, change[,c('uniprotAccession', 'wtAA', 'mutAA', 'pos')])
   unChanged <- cbind(unChanged, 'SLiM' = 'None', 'SLiM_start' = 0, 'SLiM_end' = 0,
                      'change' = 'NoChange', 'SLiM_Sequence' = 'None', 'RegEx' = 'None')
 

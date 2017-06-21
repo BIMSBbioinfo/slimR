@@ -4,8 +4,9 @@
 \alias{getClinVarVEPmissenseVariants}
 \title{getClinVarVEPmissenseVariants}
 \usage{
-getClinVarVEPmissenseVariants(vepPath, clinvarDataURL, overwrite = FALSE,
-  nodeN = 4)
+
+  getClinVarVEPmissenseVariants(vepPath = "/home/buyar/.local/bin/variant_effect_predictor.pl",
+  clinvarDataURL, overwrite = FALSE, nodeN = 4)
 }
 \value{
 A data.table object

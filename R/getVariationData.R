@@ -108,12 +108,13 @@ parseUniprotHumanVariationData <- function (filePath, outFile = 'parseUniprotHum
 ### Functions to download and map ClinVar data to Uniprot sequences
 #' getClinVarData
 #'
-#' This function will fetch the clinvar data from the given url and parse the contents
-#' of the downloaded file.
+#' This function will fetch the clinvar data from the given url and parse the
+#' contents of the downloaded file.
 #'
 #' @param url The url to the ftp location of the clinvar dataset (tab delimited
-#'   variant summary file)
-#' (e.g. ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz)
+#'   variant summary file) (e.g.
+#'   ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz)
+#'
 #' @param overwrite default: FALSE, boolean value to decide if a fresh download
 #'   should overwrite the existing file
 #' @return Path to the downloaded and unzipped file
@@ -242,7 +243,8 @@ processVEP <- function(vepFilePath, overwriteRDS = FALSE, nodeN = 4) {
 #'
 #' @return A data.table object
 #' @export
-getClinVarVEPmissenseVariants <- function(vepPath, clinvarDataURL, overwrite = FALSE, nodeN = 4) {
+getClinVarVEPmissenseVariants <- function(vepPath = '/home/buyar/.local/bin/variant_effect_predictor.pl',
+                                          clinvarDataURL, overwrite = FALSE, nodeN = 4) {
 
   rdsFile <- file.path('./slimDB', 'clinvar_VEP_missenseVariants.RDS')
   if(file.exists(rdsFile) & overwrite == FALSE) {

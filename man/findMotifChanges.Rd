@@ -10,7 +10,7 @@ findMotifChanges(sequence, variants, motifRegex = slimR::motifRegex)
 \item{sequence}{A character string of amino acid sequence}
 
 \item{variants}{A data.frame consisting of minimum four columns:
-1.uniprotAcc, 2.wtAA, 3.mutAA, 4.pos where pos is the mutation position in
+1.uniprotAccession, 2.wtAA, 3.mutAA, 4.pos where pos is the mutation position in
 the sequence, wtAA is the wild-type amino acid (one letter code) in the
 sequence and mutAA is the mutant amino acid (one letter code).}
 }
