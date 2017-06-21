@@ -341,7 +341,7 @@ combineClinVarWithHumsavar <- function(clinvarVEPdata) {
 
   #2. get humsavar data
   hs <- data.table::data.table(as.data.frame(getHumSavar()))
-
+  hs$variant <- as.character(hs$variant)
   #humsavar data simplified
   hs <- unique(subset(hs, select = c('seqnames', 'start', 'variant',
                                      'dbSNP', 'wtAA', 'mutAA', 'diseaseName')))
