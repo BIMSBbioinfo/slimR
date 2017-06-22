@@ -149,12 +149,15 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
   variants$pos <- as.numeric(variants$pos)
 
   wtMotifsAll <- slimR::searchSLiMs(sequence = sequence, motifRegex = motifRegex)
-  wtMotifsAll$ID <- apply(wtMotifsAll, 1,
+  if(!is.null(wtMotifsAll)) {
+    wtMotifsAll$ID <- apply(wtMotifsAll, 1,
                           function(x) gsub(' ', '', paste0(c(x['SLiM'], x['start'], x['end']), collapse = ':')))
+  }
 
   #for each variant find the list of motif hits that would be gained/lost
   #if the sequence had that substitution mutation
   change <- do.call(rbind, lapply(1:nrow(variants), function(i) {
+    cat("i:",i,"\n")
     wtAA <- variants$wtAA[i]
     mutAA <- variants$mutAA[i]
     pos <- variants$pos[i]
@@ -166,15 +169,28 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
 
     mutMotifs <- slimR::searchSLiMs(sequence = mutSeq, motifRegex = motifRegex, from = pos - 31, to = pos + 30)
     #filter mutMotifs for those that overlap variant position
-    mutMotifs <- mutMotifs[pos >= start & pos <= end]
-    mutMotifs$ID <- apply(mutMotifs, 1,
-                          function(x) gsub(' ', '', paste0(c(x['SLiM'], x['start'], x['end']), collapse = ':')))
+
+    if(!is.null(mutMotifs)) {
+      mutMotifs <- mutMotifs[pos >= start & pos <= end]
+      mutMotifs$ID <- apply(mutMotifs, 1,
+                            function(x) gsub(' ', '', paste0(c(x['SLiM'], x['start'], x['end']), collapse = ':')))
+      }
 
     #filter wtMotifs for those that overlap variant position
-    wtMotifs <- wtMotifsAll[pos >= start & pos <= end]
+    if(!is.null(wtMotifsAll)) {
+      wtMotifs <- wtMotifsAll[pos >= start & pos <= end]
+    }
 
-    lost <- wtMotifs[which(wtMotifs$ID %in% setdiff(wtMotifs$ID, mutMotifs$ID)),]
-    gained <- mutMotifs[which(mutMotifs$ID %in% setdiff(mutMotifs$ID, wtMotifs$ID)),]
+    if(is.null(mutMotifs) & is.null(wtMotifsAll)) {
+      return(NULL)
+    } else if (is.null(mutMotifs)) {
+      lost <- wtMotifs
+    } else if (is.null(wtMotifs)) {
+      gained <- mutMotifs
+    } else {
+      lost <- wtMotifs[which(wtMotifs$ID %in% setdiff(wtMotifs$ID, mutMotifs$ID)),]
+      gained <- mutMotifs[which(mutMotifs$ID %in% setdiff(mutMotifs$ID, wtMotifs$ID)),]
+    }
 
     lost$type <- 'lost'
     gained$type <- 'gained'
