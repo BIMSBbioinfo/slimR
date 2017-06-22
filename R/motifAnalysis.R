@@ -138,11 +138,12 @@ mutateSequence <- function (sequence, pos, wtAA, mutAA) {
 #' @export
 findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex) {
 
-  if(sum(c("wtAA", "mutAA", "pos") %in% colnames(variants)) != 3) {
+  if(sum(c("uniprotAccession", "wtAA", "mutAA", "pos") %in% colnames(variants)) != 4) {
     stop("Seems like the variants data.frame does not contain all of the required columns:
          wtAA, mutAA, and pos")
   }
 
+  variants$uniprotAccession <- as.character(variants$uniprotAccession)
   variants$wtAA <- as.character(variants$wtAA)
   variants$mutAA <- as.character(variants$mutAA)
   variants$pos <- as.numeric(variants$pos)
@@ -183,27 +184,36 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
       result$wtAA <- wtAA
       result$mutAA <- mutAA
       result$pos <- pos
-      result$uniprotAcc <- variants$uniprotAcc[i]
+      result$uniprotAccession <- variants$uniprotAccession[i]
       return(result)
     }
   }))
 
-  change <- subset(change, select = c('uniprotAccession', 'wtAA', 'mutAA', 'pos',
-                                      'SLiM', 'start', 'end', 'type', 'match'))
+  if(!is.null(change)){
+    change <- subset(change, select = c('uniprotAccession', 'wtAA', 'mutAA', 'pos',
+                                        'SLiM', 'start', 'end', 'type', 'match'))
 
-  colnames(change) <- c('uniprotAccession', 'wtAA', 'mutAA', 'pos',
-                        'SLiM', 'SLiM_start', 'SLiM_end',
-                        'change', 'SLiM_Sequence')
+    colnames(change) <- c('uniprotAccession', 'wtAA', 'mutAA', 'pos',
+                          'SLiM', 'SLiM_start', 'SLiM_end',
+                          'change', 'SLiM_Sequence')
 
-  change$RegEx <- paste(motifRegex[change$SLiM])
+    change$RegEx <- paste(motifRegex[change$SLiM])
 
-  unChanged <- dplyr::setdiff(variants, change[,c('uniprotAccession', 'wtAA', 'mutAA', 'pos')])
-  unChanged <- cbind(unChanged, 'SLiM' = 'None', 'SLiM_start' = 0, 'SLiM_end' = 0,
-                     'change' = 'NoChange', 'SLiM_Sequence' = 'None', 'RegEx' = 'None')
-
-  change <- rbind(change, unChanged)
-
-  return(change)
+    unChanged <- dplyr::setdiff(x = variants[,c('uniprotAccession', 'wtAA', 'mutAA', 'pos')],
+                                y = change[,c('uniprotAccession', 'wtAA', 'mutAA', 'pos')])
+    if(nrow(unChanged) > 0) {
+      unChanged <- cbind(unChanged, 'SLiM' = 'None', 'SLiM_start' = 0, 'SLiM_end' = 0,
+                         'change' = 'NoChange', 'SLiM_Sequence' = 'None', 'RegEx' = 'None')
+      return(rbind(change, unChanged))
+    } else {
+      return(change)
+    }
+  } else {
+    unChanged <- cbind(variants[,c('uniprotAccession', 'wtAA', 'mutAA', 'pos')],
+                       'SLiM' = 'None', 'SLiM_start' = 0, 'SLiM_end' = 0,
+                       'change' = 'NoChange', 'SLiM_Sequence' = 'None', 'RegEx' = 'None')
+    return(unChanged)
+  }
   }
 
 
