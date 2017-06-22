@@ -157,7 +157,7 @@ createDB <- function(uniprotAccessions,
                                           clinvarVariant == 'Polymorphism')])
 
     slimChangesDisease <- slimR::findMotifChangesMulti(
-      sequences = fasta,
+      sequences = fasta[unique(diseaseVars$uniprotAccession)],
       variants = diseaseVars,
       motifRegex = motifRegex,
       nodeN = nodeN)
@@ -167,7 +167,7 @@ createDB <- function(uniprotAccessions,
     rm(slimChangesDisease)
 
     slimChangesPolymorphisms <- slimR::findMotifChangesMulti(
-      sequences = fasta,
+      sequences = fasta[unique(polymorphisms$uniprotAccession)],
       variants = polymorphisms,
       motifRegex = motifRegex,
       nodeN = nodeN)
