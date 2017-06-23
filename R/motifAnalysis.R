@@ -151,13 +151,13 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
   wtMotifsAll <- slimR::searchSLiMs(sequence = sequence, motifRegex = motifRegex)
   if(!is.null(wtMotifsAll)) {
     wtMotifsAll$ID <- apply(wtMotifsAll, 1,
-                          function(x) gsub(' ', '', paste0(c(x['SLiM'], x['start'], x['end']), collapse = ':')))
+                            function(x) gsub(' ', '', paste0(c(x['SLiM'], x['start'], x['end']), collapse = ':')))
   }
 
   #for each variant find the list of motif hits that would be gained/lost
   #if the sequence had that substitution mutation
   change <- do.call(rbind, lapply(1:nrow(variants), function(i) {
-    cat("i:",i,"\n")
+    #cat("i:",i,"\n")
     wtAA <- variants$wtAA[i]
     mutAA <- variants$mutAA[i]
     pos <- variants$pos[i]
@@ -167,19 +167,22 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
                                     wtAA = wtAA,
                                     mutAA = mutAA)
 
-    mutMotifs <- slimR::searchSLiMs(sequence = mutSeq, motifRegex = motifRegex, from = pos - 31, to = pos + 30)
+    mutMotifs <- slimR::searchSLiMs(sequence = mutSeq, motifRegex = motifRegex, from = pos - 51, to = pos + 50)
     #filter mutMotifs for those that overlap variant position
 
     if(!is.null(mutMotifs)) {
       mutMotifs <- mutMotifs[pos >= start & pos <= end]
       mutMotifs$ID <- apply(mutMotifs, 1,
                             function(x) gsub(' ', '', paste0(c(x['SLiM'], x['start'], x['end']), collapse = ':')))
-      }
+    }
 
     #filter wtMotifs for those that overlap variant position
     if(!is.null(wtMotifsAll)) {
       wtMotifs <- wtMotifsAll[pos >= start & pos <= end]
     }
+
+    gained <- data.table()
+    lost <- data.table()
 
     if(is.null(mutMotifs) & is.null(wtMotifsAll)) {
       return(NULL)
@@ -192,11 +195,20 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
       gained <- mutMotifs[which(mutMotifs$ID %in% setdiff(mutMotifs$ID, wtMotifs$ID)),]
     }
 
-    lost$type <- 'lost'
-    gained$type <- 'gained'
-
-    if(nrow(lost) > 0 || nrow(gained) > 0){
+    if(nrow(lost) == 0 & nrow(gained) == 0){
+      result <- data.table()
+    } else if (nrow(lost) == 0) {
+      gained$type <- 'gained'
+      result <- gained
+    } else if (nrow(gained) == 0) {
+      lost$type <- 'lost'
+      result <- lost
+    } else {
+      lost$type <- 'lost'
+      gained$type <- 'gained'
       result <- rbind(lost,gained)
+    }
+    if(nrow(result) > 0){
       result$wtAA <- wtAA
       result$mutAA <- mutAA
       result$pos <- pos
@@ -231,7 +243,6 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
     return(unChanged)
   }
   }
-
 
 
 
