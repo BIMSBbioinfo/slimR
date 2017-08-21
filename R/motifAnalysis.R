@@ -140,7 +140,7 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
 
   if(sum(c("uniprotAccession", "wtAA", "mutAA", "pos") %in% colnames(variants)) != 4) {
     stop("Seems like the variants data.frame does not contain all of the required columns:
-         wtAA, mutAA, and pos")
+         uniprotAccession, wtAA, mutAA, and pos")
   }
 
   variants$uniprotAccession <- as.character(variants$uniprotAccession)
