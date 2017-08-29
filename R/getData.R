@@ -332,6 +332,8 @@ readIUPred <- function(iupredResultFiles) {
 #'   be overwritten with a new download.
 #' @param nodeN default: 1. Positive integer for the number of parallel cores to use
 #' for downloading and processing the files
+#' @param parseDownloadedFiles TRUE (default) or FALSE. Whether the downloaded
+#' files should be parsed and returned as an R object.
 #' @examples
 #' ids <- c('P04637', 'P11166', 'P06400')
 #' downloadUniprotFiles(uniprotAccessions = ids, outDir = getwd(),
@@ -342,7 +344,8 @@ downloadUniprotFiles <- function (uniprotAccessions,
                                   outDir = getwd(),
                                   format,
                                   overwrite = FALSE,
-                                  nodeN = 1) {
+                                  nodeN = 1,
+                                  parseDownloadedFiles = TRUE) {
   if (!format %in% c('fasta', 'gff', 'txt')) {
     stop("Uniprot files can only be downloaded in fasta, gff or txt formats.",
          format,"is not a valid option.")
@@ -370,8 +373,9 @@ downloadUniprotFiles <- function (uniprotAccessions,
     }
 
     result <- ''
-    if(downloadFlag == 0 & file.size(fileOut) > 0) {
-      if(format == 'fasta') {
+    if(parseDownloadedFiles == TRUE) {
+      if(downloadFlag == 0 & file.size(fileOut) > 0) {
+        if(format == 'fasta') {
           result <- paste(Biostrings::readAAStringSet(filepath = fileOut,
                                                       format = 'fasta'))[1]
         } else if (format == 'gff') {
@@ -379,20 +383,24 @@ downloadUniprotFiles <- function (uniprotAccessions,
         } else if (format == 'txt') {
           result <- readLines(con = fileOut)
         }
+      }
     }
     result
   }
-  names(results) <- uniprotAccessions
 
-  emptyResults <- names(results[is.na(results)])
-  if(length(emptyResults) > 0) {
-    warning(length(emptyResults), " of the downloaded files are empty.
-            \tExcluding the following uniprot accessions from the analysis:\n",
-            paste0(emptyResults, collapse = '\t'),"\n")
-    results <- results[!is.na(results)]
-  }
+  names(results) <- uniprotAccessions
   stopCluster(cl)
-  return(results)
+
+  if(parseDownloadedFiles == TRUE) {
+    emptyResults <- names(results[is.na(results)])
+    if(length(emptyResults) > 0) {
+      warning(length(emptyResults), " of the downloaded files are empty.
+              \tExcluding the following uniprot accessions from the analysis:\n",
+              paste0(emptyResults, collapse = '\t'),"\n")
+      results <- results[!is.na(results)]
+    }
+    return(results)
+  }
 }
 
 
