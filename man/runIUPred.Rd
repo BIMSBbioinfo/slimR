@@ -4,20 +4,14 @@
 \alias{runIUPred}
 \title{runIUPred}
 \usage{
-runIUPred(iupredPath, fastaFiles, outDir = getwd(), overwrite = FALSE,
-  nodeN = 1, returnResultsAsList = TRUE)
+runIUPred(iupredPath, fastaFile, nodeN = 1)
 }
 \arguments{
 \item{iupredPath}{The path to the folder containing the source code of the
 IUPred tool}
 
-\item{fastaFiles}{A vector of file paths each pointing to a fasta file
-containing the amino acid sequence of a single protein}
-
-\item{outDir}{The location where the IUPred result files should be stored.}
-
-\item{overwrite}{TRUE or FALSE (default). Whether the IUPred results should
-be overwritten}
+\item{fastaFile}{A fasta file
+containing the amino acid sequences}
 
 \item{nodeN}{default: 1. Positive integer for the number of parallel cores to use
 for downloading and processing the files}
@@ -27,7 +21,7 @@ run IUPred tool to get disorder propensity scores of a given protein sequence
 in fasta format.
 }
 \details{
-Given a directory of fasta sequences of proteins; calculate
+Given a fasta file containing one or more protein sequences; calculate
 per-base iupred disorder scores. IUPred source code can be dowloaded from
 here: http://iupred.enzim.hu/Downloads.php After unpacking the source code,
 cd to the src directory. Compile the code with "cc iupred.c -o iupred"

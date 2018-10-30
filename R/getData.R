@@ -118,7 +118,7 @@ getClinVarData <- function(url, overwrite = FALSE) {
 #' @param format File format. Accepted formats are gff, fasta, txt
 #' @param organism Organism code e.g. 9606 for human
 #' @param reviewed Only download reviewed uniprot entries (default: TRUE)
-#' @return
+#' @export
 getUniprotData <- function(format, reviewed = TRUE, organism = 9606, overwrite = FALSE) {
   if(!format %in% c('gff', 'fasta', 'txt')) {
     stop("Error: can only download gff, fasta, or txt format files")
@@ -265,6 +265,7 @@ runIUPred <- function (iupredPath,
 #' @param organism Organism taxonomy id (e.g. human: 9606)
 #' @return A Granges object containing the coordinates PFAM domains in protein
 #'   sequences
+#' @export
 getPFAM <- function(organism = 9606, pfam_version = "Pfam30.0") {
 
   url <- paste0('ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/',

@@ -4,8 +4,8 @@
 \alias{findMotifChangesMulti}
 \title{findMotifChangesMulti}
 \usage{
-findMotifChangesMulti(sequences, variants, motifRegex = slimR::motifRegex,
-  nodeN = 1)
+findMotifChangesMulti(sequences, variants,
+  motifRegex = slimR::motifRegex, nodeN = 1)
 }
 \arguments{
 \item{sequences}{List of strings where the strings are amino-acid sequences

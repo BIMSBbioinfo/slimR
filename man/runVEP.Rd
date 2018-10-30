@@ -19,6 +19,8 @@ http://www.ensembl.org/info/docs/tools/vep/vep_formats.html#default)}
 
 \item{overwrite}{(default: FALSE) set it to TRUE to overwrite the existing
 VEP output file.}
+
+\item{perlPATH}{path to PERL installation to use}
 }
 \value{
 a data.table data.frame containing variation data read from VEP
