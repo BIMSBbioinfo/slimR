@@ -213,54 +213,84 @@ getElmInstances <- function (query = '*',
 #'
 #' @param iupredPath The path to the folder containing the source code of the
 #'   IUPred tool
-#' @param fastaFiles A vector of file paths each pointing to a fasta file
-#'   containing the amino acid sequence of a single protein
-#' @param outDir The location where the IUPred result files should be stored.
-#' @param overwrite TRUE or FALSE (default). Whether the IUPred results should
-#'   be overwritten
+#' @param fastaFile A fasta file
+#'   containing the amino acid sequences
 #' @param nodeN default: 1. Positive integer for the number of parallel cores to use
 #' for downloading and processing the files
 #' @export
 runIUPred <- function (iupredPath,
-                       fastaFiles,
-                       outDir = getwd(),
-                       overwrite = FALSE,
-                       nodeN = 1,
-                       returnResultsAsList = TRUE) {
+                       fastaFile,
+                       nodeN = 1) {
 
-  iupredOutDir <- file.path(outDir, 'iupredResults')
-
-  if(!dir.exists(outDir)) {
-    dir.create(outDir)
-  }
-  if(!dir.exists(iupredOutDir)) {
-    dir.create(iupredOutDir)
-  }
-
+  fasta <- Biostrings::readAAStringSet(filepath = fastaFile, format = 'fasta')
   cl <- parallel::makeCluster(nodeN)
-  doParallel::registerDoParallel(cl)
+  parallel::clusterExport(cl = cl, varlist = c('fasta', 'iupredPath'))
+  results <- pbapply::pblapply(cl = cl, X = 1:length(fasta), FUN = function(i) {
+    require(Biostrings)
+    sequence <- fasta[i]
+    #write sequence to a temp file
+    id <- paste0(c('tmp_', sample(1:9, 10, replace = T)),  collapse = '')
+    tmpFasta <- file.path(getwd(), paste0(id, '.fasta'))
+    Biostrings::writeXStringSet(x = sequence, filepath = tmpFasta, format = 'fasta')
 
-  results <- foreach (i=1:length(fastaFiles), .inorder = TRUE) %dopar% {
-    fastaFile <- fastaFiles[i]
-    id <- gsub('.fasta', '', basename(fastaFile))
-    iupredOut <- file.path(iupredOutDir, paste0(id, '.iupred'))
-    if (!file.exists(iupredOut) | overwrite == TRUE) {
-      myCommand <- paste(paste0("export IUPred_PATH=",iupredPath, ";"),
-                         file.path(iupredPath, 'iupred'),
-                         fastaFile, "short >", iupredOut)
-      system(command = myCommand)
-    }
+    #run iupred
+    tmpOut <- file.path(getwd(), paste0(id, '.iupred'))
+    myCommand <- paste(paste0("export IUPred_PATH=",iupredPath, ";"),
+                       file.path(iupredPath, 'iupred'),
+                       tmpFasta, "short >", tmpOut)
 
-    if(file.exists(iupredOut)) {
-      df <- read.table(file = iupredOut)
+    system(command = myCommand)
+
+    if(file.exists(tmpOut)) {
+      df <- read.table(file = tmpOut)
       result <- as.numeric(df$V3)
     } else {
       result <- NA
     }
-  }
-  names(results) <- gsub(pattern = '.fasta$', replacement = '', x = basename(fastaFiles))
+    #clean up tmp files
+    file.remove(tmpFasta)
+    file.remove(tmpOut)
+    return(result)
+  })
   stopCluster(cl)
+  names(results) <- names(fasta)
   return(results)
+}
+
+
+#' getPFAM
+#'
+#' Download pfam domain annotations of complete proteomes
+#'
+#' @param organism Organism taxonomy id (e.g. human: 9606)
+#' @return A Granges object containing the coordinates PFAM domains in protein
+#'   sequences
+getPFAM <- function(organism = 9606, pfam_version = "Pfam30.0") {
+
+  url <- paste0('ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/',
+                pfam_version,
+                '/proteomes/',
+                organism,
+                ".tsv.gz")
+
+  outFile <- file.path(getwd(), paste0(pfam_version, '.', organism, '.tsv.gz'))
+
+  if(file.exists(outFile)) {
+    stop("PFAM annotation data already exists at:",outFile,"\n")
+  }
+
+  download.file(url = url, destfile = outFile)
+
+  pfam <- data.table::fread(outFile, sep = '\t', header = F)
+  colnames(pfam) <- c('seqname', 'start', 'end', 'env_start', 'env_end',
+                      'pfam_acc', 'pfam_name', 'pfam_type',
+                      'hmm_start', 'hmm_end', 'hmm_length', 'bit_score',
+                      'e_value', 'clan'
+                      )
+  pfam <- GenomicRanges::makeGRangesFromDataFrame(pfam,
+                                                  keep.extra.columns = TRUE)
+
+  return(pfam)
 }
 
 
