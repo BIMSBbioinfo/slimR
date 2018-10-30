@@ -1,181 +1,114 @@
-#' createDB
+#' parseMutation
 #'
-#' Given a vector of uniProt accessions, extract and process all available
-#' sequence features and save the resulting objects in folders and RDS objects
-#' for: 1. Fasta sequences 2. Disorder predictions using IUPred 3. Uniprot
-#' feature files downloaded in gff format 4. Uniprot variants including
-#' disease-causing and polymorphic substitutions 5. Short linear motifs - all
-#' substrings matching all available patterns 6. SLiM Changes due to disease
-#' causing mutations - The collection of changes in the proteins' SLiM content
-#' when diesase-causing variants at 4) are applied to the sequence 7. SLiM
-#' Changes due to polymorphisms - The collection of changes in the proteins'
-#' SLiM content when polymorphisms at 4) are applied to the sequence
-#'
-#' @param uniprotAccessions Vector of uniprot accessions (e.g. c('P04637',
-#'   'P11166'))
-#' @param iupredPath Path to iupred executable (default:
-#'   '/home/buyar/tools/iupred').
-#' @param vepPath Path to variant effect predictor script default:
-#'   '/home/buyar/.local/bin/variant_effect_predictor.pl',
-#' @param clinvarDataURL URL to download clinvar data default:
-#'   'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz',
-#' @param workingDirectory Path to folder where the database should be created
-#' @param nodeN Number of cores to run the database generation.
-#' @param overwrite TRUE/FALSE (default: FALSE) Boolean value to decide if the
-#'   previously downloaded or processed files be overwritten? (Applies to all
-#'   files except objects saved as RDS)
-#' @param updateFasta TRUE/FALSE (default: TRUE) Boolean to decide if fasta
-#'   download module should be run to update fasta.RDS
-#' @param updateGff TRUE/FALSE (default: TRUE) Boolean to decide if gff download
-#'   module should be run to update gff.RDS
-#' @param updateIupred TRUE/FALSE (default: TRUE) Boolean to decide if disorder
-#'   prediction should be run to update iupred.RDS
-#' @param updateSlims TRUE/FALSE (default: TRUE) Boolean to decide if motif
-#'   prediction should be run to update slims.RDS
-#' @param updateVariants TRUE/FALSE (default: TRUE) Boolean to decide if
-#'   variation data from (clinvar and humsavar) should be downloaded and updated
-#' @param updateSlimChanges TRUE/FALSE (default: TRUE) Boolean to decide if
-#'   motif changes should be calculated to update slimChanges.RDS files for
-#'   variants
-#' @importFrom parallel makeCluster
-#' @importFrom doParallel registerDoParallel
+#' Given a vector of mutation substitutions (e.g. "p.His160Arg")
+#' -> split "p.His160Arg" into "H 160 R"
 #' @export
-createDB <- function(uniprotAccessions,
-                     iupredPath = '/home/buyar/tools/iupred',
-                     vepPath = '/home/buyar/.local/bin/variant_effect_predictor.pl',
-                     clinvarDataURL = 'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz',
-                     motifRegex = slimR::motifRegex,
-                     workingDirectory = getwd(),
-                     nodeN = 1,
-                     overwrite = FALSE,
-                     updateFasta = TRUE,
-                     updateGff = TRUE,
-                     updateIupred = TRUE,
-                     updateSlims = TRUE,
-                     updateVariants = TRUE,
-                     updateSlimChanges = TRUE) {
+parseMutation <- function (mutations) {
+  mutations <- gsub(pattern = '^p.', replacement = '', x = mutations)
+  pos <- stringr::str_match(pattern = '\\d+', string = mutations)
+  df <- data.frame(do.call(rbind, stringr::str_split(pattern = '\\d+', string = mutations)))
+  df$pos <- as.numeric(pos)
+  colnames(df) <- c('wtAA', 'mutAA', 'pos')
+  df$wtAA <- slimR::aaTable$oneLetterCode[match(df$wtAA, slimR::aaTable$threeLetterCode, nomatch = )]
+  df$mutAA <- slimR::aaTable$oneLetterCode[match(df$mutAA, slimR::aaTable$threeLetterCode)]
+  return(df)
+}
 
-  if(!dir.exists(workingDirectory)){
-    dir.create(workingDirectory)
+
+#' getHumSavar
+#'
+#' Download and parse protein mutation data from UniProt
+#' @return A Granges object containing the coordinates of mutated sites in proteins
+#' @export
+getHumSavar <- function () {
+  variantFile <- file.path(getwd(), 'humsavar.txt')
+  if (!file.exists(variantFile)) {
+    download.file(url = 'www.uniprot.org/docs/humsavar.txt',
+                  destfile = variantFile, method = "curl")
+  } else {
+    warning("humsavar.txt exists at current folder",getwd(),
+            ", a new one won't be downloaded. Remove the existing
+            file and re-run the function to update the file")
   }
 
-  setwd(workingDirectory)
+  if(file.exists(paste0(variantFile, '.RDS'))){
+    return(readRDS(paste0(variantFile, '.RDS')))
+  } else {
+    #skip first 30 lines which don't contain mutation data
+    dat <- readLines(con = variantFile)[-(1:50)]
 
-  if((updateSlims == TRUE | updateSlimChanges == TRUE)
-     & updateFasta == FALSE & !file.exists('./slimDB/fasta.RDS')){
-    stop("./slimDB/fasta.RDS file is missing and updateFasta is set to FALSE.
-         In this condition, updateSlims or updateSlimChanges cannot work.
-         Please set updateFasta to TRUE and re-run.
-         Or provide a fasta.RDS file in the folder slimDB")
+    #grep the lines with relevant variant data
+    mut <- grep(pattern = "Polymorphism|Disease|Unclassified",
+                x = dat,
+                perl = TRUE,
+                value = TRUE)
+    mut <- data.frame(
+      do.call(rbind,
+              stringr::str_split(string = mut,
+                                 n = 7,
+                                 pattern = '\\s+')))
+
+    colnames(mut) <- c('geneName', 'uniprotAccession',
+                       'FTId', 'change',
+                       'variant', 'dbSNP', 'diseaseName')
+
+    parsedMut <- parseMutation(mutations = mut$change)
+
+    mut <- cbind(mut, parsedMut)
+
+    #some of the mutations may not have been parsed correctly (due to errors in
+    #humsavar file). So, some amino acids may have NA values after conversion.
+    #such entries are althogether deleted in the merged data frmae)
+    mut <- mut[!(is.na(mut$wtAA) | is.na(mut$mutAA) | is.na(mut$pos)),]
+
+    mut <- GenomicRanges::makeGRangesFromDataFrame(df = mut,
+                                                   keep.extra.columns = TRUE,
+                                                   ignore.strand = TRUE,
+                                                   seqnames.field = 'uniprotAccession',
+                                                   start.field = 'pos', end.field = 'pos')
+    saveRDS(object = mut, file = paste0(variantFile, ".RDS"))
+    return(mut)
   }
+}
 
-  if(!dir.exists('slimDB')) {
-    dir.create('slimDB')
-  }
 
-  if (updateFasta == TRUE) {
-    fasta <- downloadUniprotFiles(uniprotAccessions = uniprotAccessions,
-                                  outDir = workingDirectory,
-                                  format = 'fasta',
-                                  overwrite = overwrite,
-                                  nodeN = nodeN)
-    saveRDS(object = fasta, file = './slimDB/fasta.RDS')
-  }
-
-  if(updateGff == TRUE) {
-    gff <- downloadUniprotFiles(uniprotAccessions = uniprotAccessions,
-                                outDir = workingDirectory,
-                                format = 'gff',
-                                overwrite = overwrite,
-                                nodeN = nodeN)
-    saveRDS(object = gff, file = './slimDB/gff.RDS')
-    rm(gff)
-  }
-
-  if(updateIupred == TRUE){
-    fastaFiles <- dir(path = './fasta', pattern = '.fasta$', full.names = TRUE)
-    ##TODO only pass fastaFiles which match uniprotAccessions
-    iupred <- runIUPred(iupredPath = iupredPath,
-                        fastaFiles = fastaFiles,
-                        overwrite = overwrite,
-                        nodeN = nodeN)
-    saveRDS(object = iupred, file = './slimDB/iupred.RDS')
-    rm(iupred)
-  }
-
-  if(updateSlims == TRUE) {
-    cl <- parallel::makeCluster(nodeN)
-    doParallel::registerDoParallel(cl)
-
-    fasta <- readRDS('./slimDB/fasta.RDS')
-
-    slims <- foreach (i=1:length(fasta), .inorder = TRUE, .verbose = TRUE) %dopar% {
-      sequence <- fasta[[i]][1] #sometimes the fasta item may contain multiple sequences
-                                #for the same id. Then use the first sequence.
-      if(!is.na(sequence)) {
-        result <- slimR::searchSLiMs(sequence = sequence,
-                                     motifRegex = motifRegex)
-        if(is.null(result)){
-          result <- 'No slims found'
-        }
-      } else {
-        result <- 'Fasta file empty'
-      }
-      result
+### Functions to download and map ClinVar data to Uniprot sequences
+#' getClinVarData
+#'
+#' This function will fetch the clinvar data from the given url and parse the
+#' contents of the downloaded file.
+#'
+#' @param url The url to the ftp location of the clinvar dataset (tab delimited
+#'   variant summary file) (e.g.
+#'   ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz)
+#'
+#' @param overwrite default: FALSE, boolean value to decide if a fresh download
+#'   should overwrite the existing file
+#' @return Path to the downloaded and unzipped file
+#' @export
+getClinVarData <- function(url, overwrite = FALSE) {
+  destFile <- basename(url)
+  if(overwrite == TRUE) {
+    download.file(url = url, destfile = destFile)
+  } else if (overwrite == FALSE) {
+    if(!file.exists(destFile)) {
+      download.file(url = url, destfile = destFile)
     }
-    names(slims) <- names(fasta)
-    saveRDS(object = slims, file = './slimDB/slims.RDS')
-    rm(slims)
-    stopCluster(cl)
   }
-
-  if(updateVariants == TRUE) {
-    fasta <- readRDS('./slimDB/fasta.RDS')
-
-    clinvarVEPdata <- getClinVarVEPmissenseVariants(vepPath = vepPath,
-                                            clinvarDataURL = clinvarDataURL,
-                                            overwrite = TRUE,
-                                            nodeN = nodeN)
-
-    variants <- combineClinVarWithHumsavar(clinvarVEPdata)
-
-    variants <- validateVariants(df = variants, fasta = fasta, nodeN = nodeN)
-    saveRDS(object = variants, file = file.path('./slimDB', 'variants.RDS'))
-}
-
-  if(updateSlimChanges == TRUE) {
-
-    fasta <- readRDS('./slimDB/fasta.RDS')
-    variants <- readRDS('./slimDB/variants.RDS')
-    variants <- variants[uniprotAccession %in% uniprotAccessions & validity == 'valid']
-    variants$key <- c(1:nrow(variants))
-
-    ##Find Motif Changes by Mutations###
-    diseaseVars <- unique(variants[humsavarVariant == 'Disease' | clinvarVariant == 'Disease'])
-    polymorphisms <- unique(variants[!(variants$key %in% diseaseVars$key) &
-                                       (humsavarVariant == 'Polymorphism' |
-                                          clinvarVariant == 'Polymorphism')])
-
-    slimChangesDisease <- slimR::findMotifChangesMulti(
-      sequences = fasta[unique(diseaseVars$uniprotAccession)],
-      variants = diseaseVars,
-      motifRegex = motifRegex,
-      nodeN = nodeN)
-
-    saveRDS(object = slimChangesDisease,
-            file = './slimDB/slimChangesDisease.RDS')
-    rm(slimChangesDisease)
-
-    slimChangesPolymorphisms <- slimR::findMotifChangesMulti(
-      sequences = fasta[unique(polymorphisms$uniprotAccession)],
-      variants = polymorphisms,
-      motifRegex = motifRegex,
-      nodeN = nodeN)
-    saveRDS(object = slimChangesPolymorphisms,
-            file = './slimDB/slimChangesPolymorphisms.RDS')
-    rm(slimChangesPolymorphisms)
+  if(file.exists(destFile)) {
+    if(overwrite == TRUE) {
+      gunzipCommand <- paste('gunzip -f',destFile)
+    } else {
+      gunzipCommand <- paste('gunzip',destFile)
+    }
+    system(gunzipCommand)
+    destFile <- file.path(getwd(), gsub('.gz$', '', destFile))
+    return(destFile)
+  } else {
+    stop("Couldn't find",destFile,"to parse the results.
+         Probably the download didn't work\n")
   }
-}
+  }
 
 #' getUniprotData
 #'
@@ -330,21 +263,4 @@ runIUPred <- function (iupredPath,
   return(results)
 }
 
-#' readIUpred
-#'
-#' Given a list of files each containing iupred results for a single protein,
-#' return a list of data frames where each data frame holds the iupred results.
-#'
-#' @param A vector of file paths containing the results of IUPred
-#' @return A list of data.frame objects
-readIUPred <- function(iupredResultFiles) {
-  results <- list()
-  for(f in iupredResultFiles) {
-    df <- read.table(f)
-    colnames(df) <- c('pos', 'AA', 'score')
-    results[[length(results)+1]] <- df
-    names(results)[length(results)] <- basename(f)
-  }
-  return(results)
-}
 
