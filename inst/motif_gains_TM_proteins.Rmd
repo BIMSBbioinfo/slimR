@@ -1,0 +1,43 @@
+---
+title: "Analyse Motif Gains at Disordered Cytosolic Tails of Transmembrane Proteins"
+output:
+  html_document:
+    code_folding: hide
+    style: spacelab
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+date: "`r date()`"
+---
+
+```{r setup, echo = FALSE, message=FALSE, warning=FALSE}
+workdir <- '/data/local/buyar/collaborations/katrina/analysis_motif_gains_TM_proteins'
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_knit$set(root.dir = workdir)
+library(slimR)
+```
+
+
+# Introduction
+
+This vignette explains how to screen the proteome for gains of short linear motifs via disease-causing or polymorphic single amino-acid variations. 
+
+- Variation data: Humsavar database
+- Protein domains: Pfam30.0
+- Short linear motif annotations: ELM database
+- Disorder predictions using IUPred tool. 
+- Protein sequence and feature annotations from Uniprot database. 
+
+We make use of the slimR package along with other R/Bioconductor packages to show how to screen the 
+transmembrane proteins for gains/losses of short linear motifs. Moreover, this code shows the results that were obtained and published in the paper: https://www.sciencedirect.com/science/article/pii/S0092867418310353
+
+# Prepare datasets
+```{r getData}
+# download uniprot fasta and gff files
+slimR::
+```
+
+
+
+
