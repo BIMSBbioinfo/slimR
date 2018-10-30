@@ -2,8 +2,6 @@
 
 export(combineClinVarWithHumsavar)
 export(createDB)
-export(downloadUniprotFiles)
-export(findModifiedSlims)
 export(findMotifChanges)
 export(findMotifChangesMulti)
 export(getClinVarData)
