@@ -177,6 +177,39 @@ createDB <- function(uniprotAccessions,
   }
 }
 
+#' getUniprotData
+#'
+#' Batch download different types of data from Uniprot using
+#' REST services
+#'
+#' @param format File format. Accepted formats are gff, fasta, txt
+#' @param organism Organism code e.g. 9606 for human
+#' @param reviewed Only download reviewed uniprot entries (default: TRUE)
+#' @return
+getUniprotData <- function(format, reviewed = TRUE, organism = 9606, overwrite = FALSE) {
+  if(!format %in% c('gff', 'fasta', 'txt')) {
+    stop("Error: can only download gff, fasta, or txt format files")
+  }
+
+  url <- 'https://www.uniprot.org/uniprot/?query='
+
+  if(reviewed == TRUE) {
+    url <- paste0(url, "reviewed:yes+AND+")
+  }
+
+  url <- paste0(url, "organism:",organism, "&format=",format)
+
+  downloadDate <- paste(unlist(strsplit(date(), ' '))[c(2,3,5)], collapse = "_")
+  outFile <- paste(c("uniprot", organism, downloadDate, format), collapse = '.')
+
+  if(file.exists(outFile) & overwrite == FALSE) {
+    stop("Destination file already exists: ",outFile,
+         "\n Set 'overwrite' to TRUE to overwrite the existing file")
+  }
+
+  download.file(url = url, destfile = outFile)
+  return(outFile)
+}
 
 #' getElmClasses
 #'
@@ -240,7 +273,7 @@ getElmInstances <- function (query = '*',
 #' run IUPred tool to get disorder propensity scores of a given protein sequence
 #' in fasta format.
 #'
-#' Given a directory of fasta sequences of proteins; calculate
+#' Given a fasta file containing one or more protein sequences; calculate
 #' per-base iupred disorder scores. IUPred source code can be dowloaded from
 #' here: http://iupred.enzim.hu/Downloads.php After unpacking the source code,
 #' cd to the src directory. Compile the code with "cc iupred.c -o iupred"
