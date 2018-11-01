@@ -251,8 +251,7 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
 #' A wrapper function that runs findMotifChanges function for multiple inputs
 #' using multiple cores
 #'
-#' @param sequences List of strings where the strings are amino-acid sequences
-#'   and the list names are uniprot accessions
+#' @param sequences AAStringSet object (Biostrings)
 #' @param motifRegex List of slim regular expressions. By default, the built-in
 #'   slimR::motifRegex from the ELM database is used.
 #' @param variants A data.frame consisting of minimum four columns: 1.
@@ -261,15 +260,6 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
 #'   sequence and mutAA is the mutant amino acid (one letter code).
 #' @param nodeN Number of cores needed to run the analysis (default: 1)
 #' @return List of data.frame objects. One data.frame per each uniprot accession
-#' @examples
-#' sequences <- downloadUniprotFiles(uniprotAccessions = c('P04637', 'P11166'),
-#'                          format = 'fasta', overwrite = 'FALSE', nodeN = 2)
-#' variants <- slimR::glutMutations
-#' motifRegex <- list('mymotif' = '.ABSDBASDBAS.')
-#' motifChanges <- findMotifChangesMulti(sequences = sequences,
-#'                                      variants = variants,
-#'                                      motifRegex = motifRegex,
-#'                                      nodeN = 1)
 #' @export
 findMotifChangesMulti <- function(sequences,
                                   variants,
@@ -282,22 +272,20 @@ findMotifChangesMulti <- function(sequences,
   }
 
   cl <- parallel::makeCluster(nodeN)
-  doParallel::registerDoParallel(cl)
-
-  motifChanges <- foreach (i=1:length(sequences), .inorder = TRUE) %dopar% {
+  parallel::clusterExport(cl = cl, varlist = c('sequences', 'variants', 'motifRegex'))
+  motifChanges <- do.call(rbind, pbapply::pblapply(cl = cl, X = 1:length(sequences), FUN = function(i) {
+    require(Biostrings)
     uni <- names(sequences)[i]
     if (uni %in% variants$uniprotAccession) {
-      result <- findMotifChanges(sequence = sequences[[i]],
-                                  variants = variants[variants$uniprotAccession == uni,],
-                                  motifRegex = motifRegex
-                                  )
+      result <- slimR::findMotifChanges(sequence = paste(sequences[i]),
+                                 variants = variants[variants$uniprotAccession == uni,],
+                                 motifRegex = motifRegex
+      )
     } else {
-      result <- 'No variants found'
+      result <- NULL
     }
-    result
-  }
-  names(motifChanges) <- names(sequences)
-
+    return(result)
+  }))
   stopCluster(cl)
   return(motifChanges)
 }
