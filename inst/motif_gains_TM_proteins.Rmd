@@ -6,8 +6,6 @@ output:
     style: spacelab
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 date: "`r date()`"
 ---
 
@@ -16,6 +14,8 @@ workdir <- '/data/local/buyar/collaborations/katrina/analysis_motif_gains_TM_pro
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 knitr::opts_knit$set(root.dir = workdir)
 library(slimR)
+library(rtracklayer)
+library(Biostrings)
 ```
 
 
@@ -34,10 +34,216 @@ transmembrane proteins for gains/losses of short linear motifs. Moreover, this c
 
 # Prepare datasets
 ```{r getData}
-# download uniprot fasta and gff files
-slimR::
+# download uniprot fasta and import  
+fastaFile <- file.path(workdir, slimR::getUniprotData(format = 'fasta'))
+fasta <- Biostrings::readAAStringSet(fastaFile)
+#save additional info as metadata
+l <- as.list(names(fasta))
+names(l) <- sub("^sp\\|(.+?)\\|.*", "\\1", names(fasta))
+metadata(fasta) <- l
+#process fasta headers to keep only uniprot accessions
+names(fasta) <- names(l)
+
+# download uniprot gff annotations and import
+gffFile <- file.path(workdir, slimR::getUniprotData(format = 'gff'))
+gff <- rtracklayer::import.gff(gffFile)
+
+#download slim regular expression and add an extra motif (diLeu motif)
+slim_regex <- slimR::getElmClasses()
+slim_regex <- c(slim_regex, list('LIG_diLeu_1' = '.LL.'))
+
+# run iupred to get disorder predictions 
+iupred <- slimR::runIUPred(iupredPath = '/home/buyar/tools/iupred', 
+                           fastaFile = fastaFile, 
+                           nodeN = 10)
+#process to keep only uniprot accessions
+names(iupred) <- sub("^sp\\|(.+?)\\|.*", "\\1", names(iupred))
+
+#download single amino acid variants 
+humsavar <- slimR::getHumSavar()
+
+
+#add disorder score field to each variant
+humsavar$iupredScore <- pbapply::pbapply(as.data.table(humsavar), 1, function(x) {
+  uni <- x[['seqnames']]
+  pos <- as.numeric(x[['start']])
+  score <- iupred[[uni]][pos]
+  return(score)
+})
+
+#find out if variants overlap any known domains 
+humsavar$overlapsDomain <- FALSE
+humsavar[unique(queryHits(findOverlaps(humsavar, gff[gff$type == 'Domain',]))),]$overlapsDomain <- TRUE
+
 ```
 
+# Find motif gains/losses due to humsavar variants
+
+To predict motif gains/losses in protein sequences, we need to have a 
+table of variants (with columns: 
+
+1. uniprot accession 
+2. position of variant
+3. wild-type amino acid
+4. mutant amino acid 
+
+a list of regular expressions each representing a different class
+of short linear motifs. 
+
+We also need to look for motif gains/losses in disordered regions of the proteome. Also, we should avoid 
+regions of the proteome which are known to harbour protein domains. Point mutations in such ordered regions are most likely disruptive due to their effects on the protein structure, rather than the effect on protein-protein interactions mediated by short linear motifs. 
+
+```{r}
+#Get humsavar variants in disordered regions and not overlapping
+#any protein domains (as annotated in uniprot),
+#remove variants that are 'Unclassified'. 
+variants <- as.data.table(humsavar[humsavar$iupredScore >= 0.4 & 
+                       humsavar$overlapsDomain == FALSE & 
+                       humsavar$variant %in% c('Disease', 'Polymorphism'),])
+```
+
+Some humsavar variants may be represented multiple times 
+because they may be associated to multiple diseases, 
+but when looking for motif changes caused by each variant, 
+we want to count variants only once. 
+
+```{r}
+#subset variants for the necessary columns and get a unique list of single amino acid variants 
+variants <- subset(variants, select = c('seqnames', 'start', 'wtAA', 'mutAA', 'variant'))
+colnames(variants) <- c('uniprotAccession', 'pos', 'wtAA', 'mutAA', 'variant_type')
+variants <- unique(variants)
+
+#assign a unique label for each variant
+variants$variantID <- paste(variants$uniprotAccession, 
+                                 variants$wtAA,
+                                 variants$pos,
+                                 variants$mutAA, sep = ':')
+
+```
+
+Now we are ready to look for motif gains/losses due to single amino acid variants. 
+```{r motifChanges}
+#look for motifs in proteins with at least one variant annotation
+#looking for motif changes for 15574 variants in 6391 protein sequences takes about 10 minutes 
+motifChanges <- slimR::findMotifChangesMulti(
+  sequences = fasta[names(fasta) %in% unique(variants$uniprotAccession)], 
+  variants = variants, 
+  nodeN = 10)
+
+motifChanges$names <- metadata(fasta)[motifChanges$uniprotAccession]
+```
+
+Let's make some summary plots for the consequences of the screened variants 
+```{r}
+#merge motifChanges table with the variants table
+motifChanges <- merge(motifChanges, variants, by = c('uniprotAccession', 'pos', 'wtAA', 'mutAA'))
+```
+
+# Figure 7C from Meyer et al. 
+
+
+Define a function to filter variants by overlap with regions 
+```{r}
+
+getVariantsByRegion <- function(variants, regions) {
+  variants <- makeGRangesFromDataFrame(df = variants, 
+                                       seqnames.field = 'uniprotAccession', 
+                                       start.field = 'pos',
+                                       end.field = 'pos',
+                                       ignore.strand = T 
+                                       )
+  return(unique(queryHits(findOverlaps(variants, regions))))
+}
+
+volcanoPlot <- function(vars, motifChanges, changeType = 'gained', returnData = FALSE) {
+
+  s <- motifChanges[variantID %in% vars$variantID &  
+                  change == changeType & 
+                    variant_type %in% c('Polymorphism', 'Disease'),
+             length(pos), 
+             by = c('variant_type', 'change', 'SLiM')]
+  
+  ds <- dcast.data.table(s, SLiM ~ variant_type, value.var = 'V1')
+  ds[is.na(ds)] <- 0
+  
+  t <- table(ctm_variants$variant_type)
+  
+  ds$DiseaseBG <- t[['Disease']]
+  ds$PolymorphismBG <- t[['Polymorphism']]
+  
+  ds <- cbind(ds, do.call(rbind, apply(ds[,2:5], 1, function(x) {
+    p <- fisher.test(matrix(x, nrow = 2))$p.val
+    fc <- (x[1]+1)/(x[3]+1) * (x[4]+1)/(x[2]+1)
+    return(data.frame('pval' = p, 'foldChange' = fc))
+  })))
+  
+  if(returnData == FALSE) {
+  ggplot(ds, aes(x = log2(foldChange), y = -log10(pval))) + 
+    geom_point(aes(color = pval < 0.05), size = 5, alpha = 0.4) + 
+    geom_text_repel(aes(label = ifelse(pval < 0.05, SLiM, '')))
+  } else {
+    return(ds)
+  }
+}
+
+```
+
+
+```{r}
+gff.dt <- as.data.table(gff)
+#cytosolic regions of transmembrane proteins
+ctm <- makeGRangesFromDataFrame(df = gff.dt[type == 'Topological domain' & Note == 'Cytoplasmic',])
+#extracellular regions of transmembrane proteins
+etm <- makeGRangesFromDataFrame(df = gff.dt[type == 'Topological domain' & Note == 'Extracellular',])
+#list of transmembrane proteins with at least one annotatoin of Cytoplasmic or Extracellular regions
+tmProteins <- union(as.character(seqnames(ctm)), as.character(seqnames(etm)))
+
+#all proteins
+volcanoPlot(vars = variants, 
+            motifChanges = motifChanges)
+
+#all tm proteins
+volcanoPlot(vars = variants[variants$uniprotAccession %in% tmProteins,], 
+            motifChanges = motifChanges)
+
+#extra cellular regions of transmembrane proteins
+volcanoPlot(vars = variants[getVariantsByRegion(variants, etm),], 
+            motifChanges = motifChanges)
+
+#cytoplasmic regions of transmembrane proteins
+volcanoPlot(vars = variants[getVariantsByRegion(variants, ctm),], 
+            motifChanges = motifChanges, changeType = 'lost')
+
+```
+
+
+# Reproduce Figure 7B
+```{r}
+mc <- motifChanges[SLiM == 'LIG_diLeu_1']
+
+l <- list('all_proteins' = volcanoPlot(vars = variants, 
+                                  motifChanges = mc, 
+                                  changeType = 'gained', returnData = TRUE),
+     'tm_proteins' = volcanoPlot(vars =  variants[variants$uniprotAccession %in% tmProteins,], 
+                                  motifChanges = mc, 
+                                  changeType = 'gained', returnData = TRUE),
+     'etm' = volcanoPlot(vars = variants[getVariantsByRegion(variants, etm),], 
+                                  motifChanges = mc, 
+                                  changeType = 'gained', returnData = TRUE),
+     'ctm' = volcanoPlot(vars = variants[getVariantsByRegion(variants, ctm),], 
+                                  motifChanges = mc, 
+                                  changeType = 'gained', returnData = TRUE))
+df <- do.call(rbind, lapply(names(l), function(r) {
+  df <- l[[r]]
+  df$region <- r
+  return(df)
+}))
+
+ggplot2::ggplot(data = df,
+                  aes(x = region, y = log2(foldChange))) +
+    geom_bar(aes(fill = pval < 0.05), position = 'dodge', stat = 'identity') +
+  geom_text(aes(label = paste('p = ',round(pval, 3))))
+```
 
 
 
