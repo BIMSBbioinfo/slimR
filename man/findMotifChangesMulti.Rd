@@ -8,8 +8,7 @@ findMotifChangesMulti(sequences, variants,
   motifRegex = slimR::motifRegex, nodeN = 1)
 }
 \arguments{
-\item{sequences}{List of strings where the strings are amino-acid sequences
-and the list names are uniprot accessions}
+\item{sequences}{AAStringSet object (Biostrings)}
 
 \item{variants}{A data.frame consisting of minimum four columns: 1.
 uniprotAccession 2.wtAA, 3.mutAA, 4.pos where pos is the mutation position
@@ -27,14 +26,4 @@ List of data.frame objects. One data.frame per each uniprot accession
 \description{
 A wrapper function that runs findMotifChanges function for multiple inputs
 using multiple cores
-}
-\examples{
-sequences <- downloadUniprotFiles(uniprotAccessions = c('P04637', 'P11166'),
-                         format = 'fasta', overwrite = 'FALSE', nodeN = 2)
-variants <- slimR::glutMutations
-motifRegex <- list('mymotif' = '.ABSDBASDBAS.')
-motifChanges <- findMotifChangesMulti(sequences = sequences,
-                                     variants = variants,
-                                     motifRegex = motifRegex,
-                                     nodeN = 1)
 }
