@@ -24,7 +24,7 @@ getHumSavar <- function () {
   variantFile <- file.path(getwd(), 'humsavar.txt')
   if (!file.exists(variantFile)) {
     download.file(url = 'www.uniprot.org/docs/humsavar.txt',
-                  destfile = variantFile, method = "curl")
+                  destfile = variantFile)
   } else {
     warning("humsavar.txt exists at current folder",getwd(),
             ", a new one won't be downloaded. Remove the existing
@@ -136,8 +136,9 @@ getUniprotData <- function(format, reviewed = TRUE, organism = 9606, overwrite =
   outFile <- paste(c("uniprot", organism, downloadDate, format), collapse = '.')
 
   if(file.exists(outFile) & overwrite == FALSE) {
-    stop("Destination file already exists: ",outFile,
+    warning("Destination file already exists: ",outFile,
          "\n Set 'overwrite' to TRUE to overwrite the existing file")
+    return(outFile)
   }
 
   download.file(url = url, destfile = outFile)
