@@ -86,7 +86,8 @@ getHumSavar <- function () {
 #'   should overwrite the existing file
 #' @return Path to the downloaded and unzipped file
 #' @export
-getClinVarData <- function(url, overwrite = FALSE) {
+getClinVarData <- function(url = 'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz',
+                           overwrite = FALSE) {
   destFile <- basename(url)
   if(overwrite == TRUE) {
     download.file(url = url, destfile = destFile)
@@ -95,20 +96,8 @@ getClinVarData <- function(url, overwrite = FALSE) {
       download.file(url = url, destfile = destFile)
     }
   }
-  if(file.exists(destFile)) {
-    if(overwrite == TRUE) {
-      gunzipCommand <- paste('gunzip -f',destFile)
-    } else {
-      gunzipCommand <- paste('gunzip',destFile)
-    }
-    system(gunzipCommand)
-    destFile <- file.path(getwd(), gsub('.gz$', '', destFile))
-    return(destFile)
-  } else {
-    stop("Couldn't find",destFile,"to parse the results.
-         Probably the download didn't work\n")
-  }
-  }
+  return(destFile)
+}
 
 #' getUniprotData
 #'

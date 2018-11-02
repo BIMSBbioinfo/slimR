@@ -4,7 +4,9 @@
 \alias{getClinVarData}
 \title{getClinVarData}
 \usage{
-getClinVarData(url, overwrite = FALSE)
+
+  getClinVarData(url = "ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz",
+  overwrite = FALSE)
 }
 \arguments{
 \item{url}{The url to the ftp location of the clinvar dataset (tab delimited
