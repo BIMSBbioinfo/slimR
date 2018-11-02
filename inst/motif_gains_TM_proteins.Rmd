@@ -24,7 +24,6 @@ library(Biostrings)
 This vignette explains how to screen the proteome for gains of short linear motifs via disease-causing or polymorphic single amino-acid variations. 
 
 - Variation data: Humsavar database
-- Protein domains: Pfam30.0
 - Short linear motif annotations: ELM database
 - Disorder predictions using IUPred tool. 
 - Protein sequence and feature annotations from Uniprot database. 
@@ -139,8 +138,7 @@ Let's make some summary plots for the consequences of the screened variants
 motifChanges <- merge(motifChanges, variants, by = c('uniprotAccession', 'pos', 'wtAA', 'mutAA'))
 ```
 
-# Figure 7C from Meyer et al. 
-
+# Figure 7B and 7C from Meyer et al. 
 
 Define a function to filter variants by overlap with regions 
 ```{r}
@@ -155,18 +153,18 @@ getVariantsByRegion <- function(variants, regions) {
   return(unique(queryHits(findOverlaps(variants, regions))))
 }
 
-volcanoPlot <- function(vars, motifChanges, changeType = 'gained', returnData = FALSE) {
+compareMotifChangesByVariantType <- function(vars, motifChanges, changeType = 'gained') {
 
-  s <- motifChanges[variantID %in% vars$variantID &  
-                  change == changeType & 
-                    variant_type %in% c('Polymorphism', 'Disease'),
-             length(pos), 
-             by = c('variant_type', 'change', 'SLiM')]
+  s <- motifChanges[variantID %in% vars$variantID & 
+                      change == changeType & 
+                      variant_type %in% c('Polymorphism', 'Disease'),
+             length(variantID), 
+             by = c('SLiM', 'variant_type', 'change')]
   
   ds <- dcast.data.table(s, SLiM ~ variant_type, value.var = 'V1')
   ds[is.na(ds)] <- 0
   
-  t <- table(ctm_variants$variant_type)
+  t <- table(vars$variant_type)
   
   ds$DiseaseBG <- t[['Disease']]
   ds$PolymorphismBG <- t[['Polymorphism']]
@@ -177,13 +175,7 @@ volcanoPlot <- function(vars, motifChanges, changeType = 'gained', returnData = 
     return(data.frame('pval' = p, 'foldChange' = fc))
   })))
   
-  if(returnData == FALSE) {
-  ggplot(ds, aes(x = log2(foldChange), y = -log10(pval))) + 
-    geom_point(aes(color = pval < 0.05), size = 5, alpha = 0.4) + 
-    geom_text_repel(aes(label = ifelse(pval < 0.05, SLiM, '')))
-  } else {
-    return(ds)
-  }
+  return(ds)
 }
 
 ```
@@ -197,23 +189,6 @@ ctm <- makeGRangesFromDataFrame(df = gff.dt[type == 'Topological domain' & Note 
 etm <- makeGRangesFromDataFrame(df = gff.dt[type == 'Topological domain' & Note == 'Extracellular',])
 #list of transmembrane proteins with at least one annotatoin of Cytoplasmic or Extracellular regions
 tmProteins <- union(as.character(seqnames(ctm)), as.character(seqnames(etm)))
-
-#all proteins
-volcanoPlot(vars = variants, 
-            motifChanges = motifChanges)
-
-#all tm proteins
-volcanoPlot(vars = variants[variants$uniprotAccession %in% tmProteins,], 
-            motifChanges = motifChanges)
-
-#extra cellular regions of transmembrane proteins
-volcanoPlot(vars = variants[getVariantsByRegion(variants, etm),], 
-            motifChanges = motifChanges)
-
-#cytoplasmic regions of transmembrane proteins
-volcanoPlot(vars = variants[getVariantsByRegion(variants, ctm),], 
-            motifChanges = motifChanges, changeType = 'lost')
-
 ```
 
 
@@ -221,18 +196,21 @@ volcanoPlot(vars = variants[getVariantsByRegion(variants, ctm),],
 ```{r}
 mc <- motifChanges[SLiM == 'LIG_diLeu_1']
 
-l <- list('all_proteins' = volcanoPlot(vars = variants, 
+l <- list('all_proteins' = compareMotifChangesByVariantType(vars = variants, 
                                   motifChanges = mc, 
-                                  changeType = 'gained', returnData = TRUE),
-     'tm_proteins' = volcanoPlot(vars =  variants[variants$uniprotAccession %in% tmProteins,], 
+                                  changeType = 'gained'),
+     'transmembrane_proteins' = compareMotifChangesByVariantType(
+       vars =  variants[variants$uniprotAccession %in% tmProteins,], 
                                   motifChanges = mc, 
-                                  changeType = 'gained', returnData = TRUE),
-     'etm' = volcanoPlot(vars = variants[getVariantsByRegion(variants, etm),], 
+                                  changeType = 'gained'),
+     'transmembrane_extracellular' = compareMotifChangesByVariantType(
+       vars = variants[getVariantsByRegion(variants, etm),], 
                                   motifChanges = mc, 
-                                  changeType = 'gained', returnData = TRUE),
-     'ctm' = volcanoPlot(vars = variants[getVariantsByRegion(variants, ctm),], 
+                                  changeType = 'gained'),
+     'transmembrane_cytoplasmic' = compareMotifChangesByVariantType(
+       vars = variants[getVariantsByRegion(variants, ctm),], 
                                   motifChanges = mc, 
-                                  changeType = 'gained', returnData = TRUE))
+                                  changeType = 'gained'))
 df <- do.call(rbind, lapply(names(l), function(r) {
   df <- l[[r]]
   df$region <- r
@@ -241,9 +219,23 @@ df <- do.call(rbind, lapply(names(l), function(r) {
 
 ggplot2::ggplot(data = df,
                   aes(x = region, y = log2(foldChange))) +
-    geom_bar(aes(fill = pval < 0.05), position = 'dodge', stat = 'identity') +
-  geom_text(aes(label = paste('p = ',round(pval, 3))))
+    geom_bar(aes(fill = ifelse(pval < 0.05, 'red', 'black')), position = 'dodge', stat = 'identity') +
+  geom_text(aes(label = paste('p =',round(pval, 3)), 
+                y = log2(foldChange)/2), 
+            color = 'white', size = 6) + 
+  scale_fill_identity()
+    
 ```
 
+## Reproduce Figure 7C
 
+```{r Figure_7C}
+#cytoplasmic regions of transmembrane proteins
+vars = variants[getVariantsByRegion(variants, ctm),]
+dt <- compareMotifChangesByVariantType(vars = vars, motifChanges = motifChanges, changeType = 'gained')
+ggplot(dt, aes(x = log2(foldChange), y = -log10(pval))) + 
+  geom_point(aes(color = ifelse(pval < 0.05, 'red', 'black')), size = 5, alpha = 0.4) + 
+  geom_label_repel(aes(label = ifelse(pval < 0.05, SLiM, ''))) + 
+  scale_color_identity()
+```
 
