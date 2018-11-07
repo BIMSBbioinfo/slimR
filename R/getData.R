@@ -121,7 +121,7 @@ getUniprotData <- function(format, reviewed = TRUE, organism = 9606, overwrite =
 
   url <- paste0(url, "organism:",organism, "&format=",format)
 
-  downloadDate <- paste(unlist(strsplit(date(), ' '))[c(2,3,5)], collapse = "_")
+  downloadDate <- paste(unlist(strsplit(date(), ' '))[c(2,4,6)], collapse = '_')
   outFile <- paste(c("uniprot", organism, downloadDate, format), collapse = '.')
 
   if(file.exists(outFile) & overwrite == FALSE) {
@@ -214,7 +214,7 @@ runIUPred <- function (iupredPath,
 
   fasta <- Biostrings::readAAStringSet(filepath = fastaFile, format = 'fasta')
   cl <- parallel::makeCluster(nodeN)
-  parallel::clusterExport(cl = cl, varlist = c('fasta', 'iupredPath'))
+  parallel::clusterExport(cl = cl, varlist = c('fasta', 'iupredPath'), envir = environment())
   results <- pbapply::pblapply(cl = cl, X = 1:length(fasta), FUN = function(i) {
     require(Biostrings)
     sequence <- fasta[i]
