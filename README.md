@@ -1,20 +1,19 @@
 # Short Linear Motif (SLiM) Analysis in the context of human diseases
 
-slimR is a protein sequence analysis package centered around
-  short linear motifs (SLiMs) and their connections to human diseases.
-  The package contains functions to retrieve data from public databases
-  such as ELM (elm.eu.org), UniProt (uniprot.org). Annotated SLiMs and
-  SLiM patterns  (regular expressions) are retrieved from the ELM database.
-  Protein sequence  features such as disease-causing mutations, polymorphisms,
-  protein domains,  and many other annotated features are retrieved from the
-  UniProt database.  The main motivation of the package is to facilitate
-  analysis of the impact of protein sequence variations due to mutations
-  and polymorphism on the content of SLiMs. Besides functions to retrieve
-  data from public resources, there are functions to calculate disorder
-  scores, search for SLiM instances in given sequences, look for gain/loss
-  of SLiMs due to sequence variations. The package should be useful not
-  only for the analysis of human diseases but also studies of the evolution
-  of species via gain/loss of SLiMs in any comparative context.
+slimR is a protein sequence analysis package centered around short linear motifs
+(SLiMs) and their connections to human diseases. The package contains functions
+to retrieve data from public databases such as ELM (elm.eu.org), UniProt
+(uniprot.org), PFAM, and Clinvar. Annotated SLiMs and SLiM patterns  (regular
+expressions) are retrieved from the ELM database. Protein sequence  features
+such as disease-causing mutations, polymorphisms, protein domains,  and many
+other annotated features are retrieved from the UniProt database.  The main
+motivation of the package is to facilitate analysis of the impact of protein
+sequence variations due to mutations and polymorphism on the content of SLiMs.
+Besides functions to retrieve data from public resources, there are functions to
+calculate disorder scores, search for SLiM instances in given sequences, look
+for gain/loss of SLiMs due to sequence variations. The package should be useful
+not only for the analysis of human diseases but also studies of the evolution of
+species via gain/loss of SLiMs in any comparative context.
 
 ## External dependency 
 Currently, the package depends on IUPred tool for sequence disorder score prediction.
