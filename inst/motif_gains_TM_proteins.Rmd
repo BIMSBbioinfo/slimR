@@ -1,5 +1,5 @@
 ---
-title: "Analyse Motif Gains at Disordered Cytosolic Tails of Transmembrane Proteins"
+title: "Analyse Motif Gains at Disordered Cytosolic Tails of Transmembrane Proteins using Humsavar variants"
 output:
   html_document:
     code_folding: hide
