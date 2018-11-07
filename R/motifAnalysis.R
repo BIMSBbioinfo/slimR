@@ -272,7 +272,8 @@ findMotifChangesMulti <- function(sequences,
   }
 
   cl <- parallel::makeCluster(nodeN)
-  parallel::clusterExport(cl = cl, varlist = c('sequences', 'variants', 'motifRegex'))
+  parallel::clusterExport(cl = cl, varlist = c('sequences', 'variants', 'motifRegex'),
+                          envir=environment())
   motifChanges <- do.call(rbind, pbapply::pblapply(cl = cl, X = 1:length(sequences), FUN = function(i) {
     require(Biostrings)
     uni <- names(sequences)[i]
