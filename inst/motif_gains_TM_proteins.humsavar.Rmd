@@ -67,7 +67,6 @@ names(iupred) <- sub("^sp\\|(.+?)\\|.*", "\\1", names(iupred))
 #download single amino acid variants 
 humsavar <- slimR::getHumSavar()
 
-
 #add disorder score field to each variant
 humsavar$iupredScore <- pbapply::pbapply(as.data.table(humsavar), 1, function(x) {
   uni <- x[['seqnames']]
@@ -198,7 +197,7 @@ tmProteins <- union(as.character(seqnames(ctm)), as.character(seqnames(etm)))
 ```
 
 
-# Reproduce Figure 7B
+## Reproduce Figure 7B
 ```{r}
 mc <- motifChanges[SLiM == 'LIG_diLeu_1']
 
