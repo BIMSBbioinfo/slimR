@@ -11,7 +11,7 @@ validateVariants(df, fasta, nodeN = 8)
 columns: 1. uniprotAccession 2. wtAA (wild-type amino acid) 3. pos (the position
 of the wild-type amino acid in the protein sequence)}
 
-\item{fasta}{A list of fasta sequences, in which names of the list items
+\item{fasta}{AAStringSet object of protein sequences, in which names of the list items
 should correspond to the uniprotAccession column of the 'df' input}
 
 \item{nodeN}{Number of cores to use to parallelise the run}

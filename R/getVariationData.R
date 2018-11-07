@@ -234,7 +234,7 @@ combineClinVarWithHumsavar <- function(clinvarVEPdata) {
 #' @param df A data.frame or data.table containing minimally the following
 #'   columns: 1. uniprotAccession 2. wtAA (wild-type amino acid) 3. pos (the position
 #'   of the wild-type amino acid in the protein sequence)
-#' @param fasta A list of fasta sequences, in which names of the list items
+#' @param fasta AAStringSet object of protein sequences, in which names of the list items
 #'   should correspond to the uniprotAccession column of the 'df' input
 #' @param nodeN Number of cores to use to parallelise the run
 #' @return A subset of the initial data.frame or data.table object such that the
@@ -244,45 +244,18 @@ combineClinVarWithHumsavar <- function(clinvarVEPdata) {
 #' @importFrom parallel stopCluster
 #' @export
 validateVariants <- function(df, fasta, nodeN = 8) {
-  flankLength <- 7
-  cl <- parallel::makeCluster(nodeN)
-  parallel::clusterExport(cl, varlist = c('df', 'fasta', 'flankLength'),
-                          envir = environment())
-  validity <- data.frame(do.call(rbind, parLapply(cl, 1:nrow(df), function(i) {
-    uni <- df$uniprotAccession[i]
-    AA <- df$wtAA[i]
-    pos <- as.numeric(df$pos[i])
-    status <- ''
-    flankingSequence <- ''
-    if(!uni %in% names(fasta)) {
-      status <- 'uni_not_available_as_fasta'
-    } else {
-      residues <- unlist(strsplit(fasta[[uni]], ''))
-      if(length(residues) < pos) {
-        status <- 'invalid'
-      } else if (residues[pos] == AA) {
-        status <- 'valid'
-        if(pos > flankLength) {
-          flankN <- residues[(pos-flankLength):(pos-1)]
-        } else {
-          flankN <- residues[1:(pos-1)]
-        }
+  cl <- parallel::makeCluster(10)
+  parallel::clusterExport(cl, varlist = c('fasta'))
+  mappedResidues <- pbapply::pbapply(cl = cl, X = df, MARGIN = 1, FUN = function(x) {
+    require(Biostrings)
+    uni <- x[['uniprotAccession']]
+    pos <- as.numeric(x[['pos']])
+    ifelse(pos > length(fasta[[uni]]), NA, as.character(fasta[[uni]][pos]))
+  })
+  parallel::stopCluster(cl)
 
-        if(length(residues) - flankLength >= pos) {
-          flankC <- residues[(pos+1):(pos+flankLength)]
-        } else {
-          flankC <- residues[(pos+1):length(residues)]
-        }
-        flankingSequence <- paste0(c(flankN, AA, flankC), collapse = '')
-      } else {
-        status <- 'invalid'
-      }
-    }
-    return(c(status, flankingSequence))
-  })), stringsAsFactors = F)
-  colnames(validity) <- c('validity', 'flankingSequence')
-  df <- cbind(df, validity)
-  stopCluster(cl)
+  df$mappedResidue <- mappedResidues
+  df$validity <- df$wtAA == df$mappedResidue
   return(df)
 }
 
