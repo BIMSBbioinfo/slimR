@@ -1,0 +1,415 @@
+---
+title: "Analyse Motif Gains at Disordered Cytosolic Tails of Transmembrane Proteins using ClinVar variants"
+output:
+  html_document:
+    style: spacelab
+    toc: yes
+    toc_float: yes
+date: "`r date()`"
+---
+
+```{r setup, echo = FALSE, message=FALSE, warning=FALSE}
+workdir <- '/data/local/buyar/collaborations/katrina/analysis_motif_gains_TM_proteins'
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, eval = FALSE)
+knitr::opts_knit$set(root.dir = workdir)
+library(slimR)
+library(rtracklayer)
+library(Biostrings)
+library(data.table)
+library(ggplot2)
+library(stringi)
+library(parallel)
+library(biomaRt)
+library(ggrepel)
+```
+
+
+# Introduction
+
+This vignette explains how to screen the proteome for gains of short linear motifs via disease-causing or polymorphic single amino-acid variations. 
+
+- Variation data: Clinvar Database
+- Short linear motif annotations: ELM database
+- Disorder predictions using IUPred tool. 
+- Protein sequence and feature annotations from Uniprot database. 
+
+We make use of the slimR package along with other R/Bioconductor packages to show how to screen the 
+transmembrane proteins for gains/losses of short linear motifs. Moreover, this code shows the results that were obtained and published in the paper: https://www.sciencedirect.com/science/article/pii/S0092867418310353
+
+# Prepare datasets
+```{r getData}
+# download uniprot fasta and import  
+fastaFile <- file.path(workdir, slimR::getUniprotData(format = 'fasta'))
+fasta <- Biostrings::readAAStringSet(fastaFile)
+#save additional info as metadata
+l <- as.list(names(fasta))
+names(l) <- sub("^sp\\|(.+?)\\|.*", "\\1", names(fasta))
+metadata(fasta) <- l
+#process fasta headers to keep only uniprot accessions
+names(fasta) <- names(l)
+
+# download uniprot gff annotations and import
+gffFile <- file.path(workdir, slimR::getUniprotData(format = 'gff'))
+gff <- rtracklayer::import.gff(gffFile)
+
+# run iupred to get disorder predictions 
+iupred <- slimR::runIUPred(iupredPath = '/home/buyar/tools/iupred', 
+                           fastaFile = fastaFile, 
+                           nodeN = 10)
+#process to keep only uniprot accessions
+names(iupred) <- sub("^sp\\|(.+?)\\|.*", "\\1", names(iupred))
+```
+
+Pre-downloaded fasta, gff, and pre-computed iupred objects can be downloaded from the following links:
+
+- fasta: https://bimsbstatic.mdc-berlin.de/akalin/buyar/katrina/uniprot.9606.fasta.RDS
+- gff: https://bimsbstatic.mdc-berlin.de/akalin/buyar/katrina/uniprot.9606.gff.RDS
+- iupred: https://bimsbstatic.mdc-berlin.de/akalin/buyar/katrina/uniprot.9606.iupred.RDS
+
+# Import Clinvar variants 
+
+Here is the description of how the clinvar variants were processed in the methods section of Meyer et al. 
+
+The version of the Clinvar variant data that was used in the paper can be downloaded from here: 
+https://bimsbstatic.mdc-berlin.de/akalin/buyar/katrina/variant_summary.txt.gz
+
+The latest version of Clinvar variants can be downloaded from here: 
+ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz
+
+Below, the clinvar variants are downloaded. Single nucleotide variants for the human genome assembly GRCh38 are selected. Then, Ensemble variant_effect_predictor version 82 is run to translate the single nucleotide variants to find the single amino acid variants in uniprot sequences. 
+
+```{r clinvarVariants}
+clinvarData <- data.table::fread(file.path(getwd(), 'variant_summary.txt.gz'))
+
+clinvarData <- clinvarData[Type == 'single nucleotide variant' &
+                             Assembly == 'GRCh38']
+
+#subset the clinvar data by columns, write to a file and pass to variant_effect_predictor.pl (VEP)
+clinvarData$Allele <- paste(clinvarData$ReferenceAllele,
+                            clinvarData$AlternateAllele, sep = '/')
+#clinvar uses the positive strand as reference nucleotide
+clinvarData$Strand <- '+'
+clinvarData$Name <- gsub(' ', '_', clinvarData$Name)
+# identifier created to uniquely refer to every row in the data table. this
+# is used as input to VEP and later used to merge VEP results with some of
+# the clinvarData fields (e.g. dbSNP id etc)
+clinvarData$Identifier <- paste(clinvarData$Chromosome, clinvarData$Start,
+                                clinvarData$Stop, clinvarData$Name,
+                                sep = ':')
+write.table(x = clinvarData[,c('Chromosome', 'Start', 'Stop',
+                               'Allele', 'Strand', 'Identifier')],
+            file = 'clinvarData.processed.tsv', quote = F,
+            sep = '\t', row.names = F, col.names = F)
+```
+
+
+variant_effect_predictor version 82 was run for the selected single nucleotide variants 
+
+```
+command <- paste("variant_effect_predictor.pl 
+                  -i clinvarData.processed.tsv 
+                  -o clinvarData.processed.VEPoutput.tsv 
+                   --cache --uniprot --force_overwrite --fork 8")
+system(command)
+```
+
+The resulting file can be downloaded from here: 
+https://bimsbstatic.mdc-berlin.de/akalin/buyar/katrina/clinvarData.processed.VEPoutput.tsv.gz
+
+VEP results are further processed to find missense variants that are translated into SwissProt/Uniprot sequences. 
+```{r}
+vepRaw <- data.table::fread('clinvarData.processed.VEPoutput.tsv.gz', header = T)
+cat("Read",nrow(vepRaw),"mappings of",nrow(unique(vepRaw[,1])),"unique variants \n")
+
+#filter for missense variants with swissprot ids
+vep <- vepRaw[grepl(pattern = 'SWISSPROT', x = vepRaw$Extra)]
+
+cat("Removing mappings that don't have a SWISSPROT ID...\n",
+    "\tkeeping",nrow(vep),"mappings of",nrow(unique(vep[,1])),
+    "unique variants \n")
+
+vep <- vep[Consequence == 'missense_variant']
+
+cat("Removing variants that don't lead to a single amino-acid substitution...\n",
+    "\tkeeping",nrow(vep),"mappings of",nrow(unique(vep[,1])),
+    "unique variants\n")
+
+#extract uniprot accession numbers and create a new column
+cl <- parallel::makeCluster(nodeN)
+parallel::clusterExport(cl, varlist = c('vep'), envir = environment())
+vep$uniprotAccession <- gsub(pattern = '(SWISSPROT=|;$)', replacement = '', do.call(c, parLapply(cl, vep$Extra, function(x) {
+  unlist(stringi::stri_extract_all(str = x, regex = 'SWISSPROT=.*?;'))
+})))
+parallel::stopCluster(cl)
+colnames(vep)[1] <- 'Identifier'
+
+#remove rows where multiple amino acids are reported for missense variants
+vep <- vep[grep('^.\\/.$', vep$Amino_acids),]
+cat("Removed variants where multiple amino acids are reported for missense variants...\n",
+    "\tkeeping",nrow(vep),"mappings of",nrow(unique(vep[,1])),
+    "unique variants \n")
+
+#add extra columns about the mutation positions and amino acids
+vep$pos <- as.numeric(vep$Protein_position)
+vep$wtAA <- gsub(pattern = '\\/.$', '', vep$Amino_acids)
+vep$mutAA <- gsub(pattern = '^.\\/', '', vep$Amino_acids)
+```
+
+Thus, at this point, we should have 256,802 mappings of 109,922 unique variants. Notice that a single nucleotide variant can be mapped to one or more single amino acid variants (due to overlapping annotations of genes). 
+
+The resulting table can be downloaded from here (as an RDS file, which can be read into memory 
+using `readRDS` function): 
+https://bimsbstatic.mdc-berlin.de/akalin/buyar/katrina/clinvarData.processed.VEPoutput.RDS
+
+Now, we merge VEP data with the original clinvar data (notice that VEP results will only contain
+missense-variants, so the clinvar data will be down-sized to only those
+that have a calculated consequence of 'missense variant' according to VEP)
+
+```{r}
+clinvarVEPdata <- merge(clinvarData, vep, by = 'Identifier')
+```
+
+# More sanity checks 
+
+The clinvar table contains a `Name` field which contains information about the variant such as the gene name and the translated amino-acid change (e.g. "NM_014630.2(ZNF592):c.3136G>A_(p.Gly1046Arg)"). Ideally, if this `Name` field contained the Uniprot Accession number instead of the gene name, then we wouldn't have to go through all the previous pre-processing steps. However, we would like to stick to the original Clinvar annotation and  pick the translated amino acid variants via VEP that actually match the records in the `Name` field. 
+
+```{r}
+# apply a filter to match clinvar variants (using the identifier/name field) with the translated variants on uniprot sequences
+clinvarMutations <- slimR::parseMutation(stringi::stri_extract(str = clinvarVEPdata$Identifier, regex = 'p\\....\\d+...'))
+matchedVars <- paste(clinvarMutations$wtAA, clinvarMutations$pos, clinvarMutations$mutAA, sep = ':') == paste(clinvarVEPdata$wtAA, clinvarVEPdata$pos, clinvarVEPdata$mutAA, sep = ':')
+clinvarVEPdata[matchedVars]
+
+matchedVars <- paste(clinvarMutations$wtAA, clinvarMutations$pos, clinvarMutations$mutAA, sep = ':') == paste(clinvarVEPdata$wtAA, clinvarVEPdata$pos, clinvarVEPdata$mutAA, sep = ':')
+clinvarVEPdata <- clinvarVEPdata[matchedVars]
+
+# apply another filter to match the gene names for clinvar variants and
+# gene names of the translated variants on uniprot sequences
+# get a table of reviewed uniprot ids and their gene names
+getUniProt2HGNC<- function (uniprotAccessions) {
+  ensembl <- biomaRt::useMart('ensembl', dataset="hsapiens_gene_ensembl")
+  annotation <- biomaRt::getBM(attributes=c("uniprotswissprot", "hgnc_symbol"),
+                    filters="uniprotswissprot",
+                    values=uniprotAccessions,
+                    mart=ensembl)
+  return(annotation)
+}
+
+uni2hgnc <- getUniProt2HGNC(unique(clinvarVEPdata$uniprotAccession))
+clinvarVEPdata$mappedGeneSymbol <- uni2hgnc[match(clinvarVEPdata$uniprotAccession, uni2hgnc$uniprotswissprot),]$hgnc_symbol
+clinvarVEPdata <- clinvarVEPdata[clinvarVEPdata$GeneSymbol == clinvarVEPdata$mappedGeneSymbol]
+
+```
+
+We also need to make sure that the fasta records of the Uniprot sequences contain exactly the same wild-type residue at the given position. 
+
+First, we make sure of this by checking if the translated amino acid variant matches the residue in the fasta records. The will add a new column called 'validity' with TRUE/FALSE values. If TRUE, the translated wild-type residue at the given position exactly matches the residue at the corresponding position of the current protein sequence. 
+```{r}
+clinvarVEPdata <- slimR::validateVariants(df = clinvarVEPdata, fasta = fasta, nodeN = 10)
+
+clinvarVEPdata <- clinvarVEPdata[validity == TRUE]
+```
+
+Now, we'd like to add two more columns to the variants table, which will be used to filter variants by 1. disorder propensity scores, 2. overlap with annotated protein domains, which will be needed when looking for motif gain/losses in the sequences due to amino-acid variants. 
+
+```{r}
+#add disorder score field to each variant
+clinvarVEPdata$iupredScore <- pbapply::pbapply(as.data.table(clinvarVEPdata), 1, function(x) {
+  uni <- x[['uniprotAccession']]
+  pos <- as.numeric(x[['pos']])
+  score <- iupred[[uni]][pos]
+  return(score)
+})
+
+#find out if variants overlap any known domains 
+clinvarVEPdata.gr <- makeGRangesFromDataFrame(clinvarVEPdata, ignore.strand = TRUE, 
+                                              start.field = 'pos', 
+                                              end.field = 'pos', 
+                                              seqnames.field = 'uniprotAccession')
+clinvarVEPdata$overlapsDomain <- FALSE
+clinvarVEPdata[unique(queryHits(findOverlaps(clinvarVEPdata.gr, gff[gff$type == 'Domain',]))),]$overlapsDomain <- TRUE
+```
+
+The resulting table can be downloaded from here as an RDS file. 
+https://bimsbstatic.mdc-berlin.de/akalin/buyar/katrina/clinvarVEPdata.sanitychecked.RDS
+
+# Find motif gains/losses due to variants
+
+To predict motif gains/losses in protein sequences, we need to have a 
+table of variants (with columns: 
+
+1. uniprot accession 
+2. position of variant
+3. wild-type amino acid
+4. mutant amino acid 
+
+a list of regular expressions each representing a different class
+of short linear motifs. 
+
+We also need to look for motif gains/losses in disordered regions of the proteome. Also, we should avoid 
+regions of the proteome which are known to harbour protein domains. Point mutations in such ordered regions are most likely disruptive due to their effects on the protein structure, rather than the effect on protein-protein interactions mediated by short linear motifs. 
+
+```{r, eval = TRUE}
+#import pre-processed and sanity checked clinvar variants and other annotation data
+clinvarVEPdata <- readRDS('clinvarVEPdata.sanitychecked.RDS')
+fasta <- readRDS('uniprot.9606.fasta.RDS')
+gff <- readRDS('uniprot.9606.gff.RDS')
+iupred <- readRDS('uniprot.9606.iupred.RDS')
+
+#Get variants in disordered regions and not overlapping
+#any protein domains (as annotated in uniprot),
+variants <- clinvarVEPdata[iupredScore > 0.4 &
+                      overlapsDomain == FALSE]
+
+#classify variants as 'Disease' or 'Polymorphism' depending on the clinical significance annotations.
+#update clinical significance info by taking the first classification when there are multiple provided
+variants$ClinicalSignificancePrimary <- unlist(lapply(variants$ClinicalSignificance, function(x) {
+  unlist(strsplit(x = x, split = ','))[1]
+}))
+
+variants$variant_type <- 'Other'
+variants[variants$ClinicalSignificancePrimary %in% c('Pathogenic', 
+                                                     'Pathogenic/Likely pathogenic', 
+                                                     'Likely pathogenic'),]$variant_type <- 'Disease'
+variants[variants$ClinicalSignificancePrimary %in% c('Benign', 
+                                                     'Benign/Likely benign', 
+                                                     'Likely benign'),]$variant_type <- 'Polymorphism'
+
+variants <- variants[variant_type %in% c('Disease', 'Polymorphism')]
+```
+
+Some variants may be represented multiple times 
+because they may be associated to multiple diseases, 
+but when looking for motif changes caused by each variant, 
+we want to count variants only once. 
+
+```{r, eval = TRUE}
+#assign a unique label for each variant
+variants$variantID <- paste(variants$uniprotAccession, 
+                                 variants$wtAA,
+                                 variants$pos,
+                                 variants$mutAA, sep = ':')
+#subset variants for the necessary columns and get a unique list of single amino acid variants 
+variants <- subset(variants, select = c('uniprotAccession', 'pos', 'wtAA', 'mutAA', 'variant_type', 'variantID'))
+variants <- unique(variants)
+```
+
+Now we are ready to look for motif gains/losses due to single amino acid variants. 
+```{r motifChanges, eval = TRUE}
+#look for motifs in proteins with at least one variant annotation
+#looking for motif changes for 10190 variants in 2199 protein sequences 
+motifChanges <- slimR::findMotifChangesMulti(
+  sequences = fasta[names(fasta) %in% unique(variants$uniprotAccession)], 
+  variants = variants, 
+  nodeN = 10)
+```
+
+Let's make some summary plots for the consequences of the screened variants 
+```{r, eval = TRUE}
+#merge motifChanges table with the variants table
+motifChanges <- merge(motifChanges, variants, by = c('uniprotAccession', 'pos', 'wtAA', 'mutAA'))
+```
+
+# Figure S6B and S6C from Meyer et al. 
+
+Define a function to filter variants by overlap with regions 
+```{r, eval = TRUE}
+
+getVariantsByRegion <- function(variants, regions) {
+  variants <- makeGRangesFromDataFrame(df = variants, 
+                                       seqnames.field = 'uniprotAccession', 
+                                       start.field = 'pos',
+                                       end.field = 'pos',
+                                       ignore.strand = T 
+                                       )
+  return(unique(queryHits(findOverlaps(variants, regions))))
+}
+
+compareMotifChangesByVariantType <- function(vars, motifChanges, changeType = 'gained') {
+
+  s <- motifChanges[variantID %in% vars$variantID & 
+                      change == changeType & 
+                      variant_type %in% c('Polymorphism', 'Disease'),
+             length(variantID), 
+             by = c('SLiM', 'variant_type', 'change')]
+  
+  ds <- dcast.data.table(s, SLiM ~ variant_type, value.var = 'V1')
+  ds[is.na(ds)] <- 0
+  
+  t <- table(vars$variant_type)
+  
+  ds$DiseaseFail <- t[['Disease']] - ds$Disease
+  ds$PolymorphismFail  <- t[['Polymorphism']] - ds$Polymorphism
+  
+  ds <- cbind(ds, do.call(rbind, apply(ds[,2:5], 1, function(x) {
+    
+    test <- fisher.test(matrix(c(x[1], x[3], x[2], x[4]), nrow = 2), alternative = 'two.sided')
+    p <- test$p.value
+    or <- as.numeric(test$estimate)
+    return(data.frame('pval' = p, 'oddsRatio' = or))
+  })))
+  
+  return(ds)
+}
+
+```
+
+
+```{r, eval = TRUE}
+gff.dt <- as.data.table(gff)
+#cytosolic regions of transmembrane proteins
+ctm <- makeGRangesFromDataFrame(df = gff.dt[type == 'Topological domain' & Note == 'Cytoplasmic',])
+#extracellular regions of transmembrane proteins
+etm <- makeGRangesFromDataFrame(df = gff.dt[type == 'Topological domain' & Note == 'Extracellular',])
+#list of transmembrane proteins with at least one annotatoin of Cytoplasmic or Extracellular regions
+tmProteins <- union(as.character(seqnames(ctm)), as.character(seqnames(etm)))
+```
+
+
+# Reproduce Figure S6B
+```{r, eval = TRUE}
+mc <- motifChanges[SLiM == 'LIG_diLeu_1']
+
+l <- list('all_proteins' = compareMotifChangesByVariantType(vars = variants, 
+                                  motifChanges = mc, 
+                                  changeType = 'gained'),
+     'transmembrane_proteins' = compareMotifChangesByVariantType(
+       vars =  variants[variants$uniprotAccession %in% tmProteins,], 
+                                  motifChanges = mc, 
+                                  changeType = 'gained'),
+     'transmembrane_extracellular' = compareMotifChangesByVariantType(
+       vars = variants[getVariantsByRegion(variants, etm),], 
+                                  motifChanges = mc, 
+                                  changeType = 'gained'),
+     'transmembrane_cytoplasmic' = compareMotifChangesByVariantType(
+       vars = variants[getVariantsByRegion(variants, ctm),], 
+                                  motifChanges = mc, 
+                                  changeType = 'gained'))
+df <- do.call(rbind, lapply(names(l), function(r) {
+  df <- l[[r]]
+  df$region <- r
+  return(df)
+}))
+
+ggplot2::ggplot(data = df,
+                  aes(x = region, y = log2(oddsRatio))) +
+    geom_bar(aes(fill = ifelse(pval < 0.05, 'red', 'black')), position = 'dodge', stat = 'identity') +
+  geom_text(aes(label = paste('p =',round(pval, 3)), 
+                y = log2(oddsRatio)/2), 
+            color = 'white', size = 6) + 
+  scale_fill_identity()
+
+```
+
+## Reproduce Figure S6C
+
+```{r, eval = TRUE}
+#cytoplasmic regions of transmembrane proteins
+vars = variants[getVariantsByRegion(variants, ctm),]
+dt <- compareMotifChangesByVariantType(vars = vars, motifChanges = motifChanges, changeType = 'gained')
+ggplot(dt, aes(x = log2(oddsRatio), y = -log10(pval))) + 
+  geom_point(aes(color = ifelse(pval < 0.05, 'red', 'black')), size = 5, alpha = 0.4) + 
+  geom_label_repel(aes(label = ifelse(pval < 0.05, SLiM, ''))) + 
+  scale_color_identity()
+```
+
+
