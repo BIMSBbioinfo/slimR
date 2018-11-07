@@ -16,6 +16,12 @@ knitr::opts_knit$set(root.dir = workdir)
 library(slimR)
 library(rtracklayer)
 library(Biostrings)
+library(data.table)
+library(ggplot2)
+library(stringi)
+library(parallel)
+library(biomaRt)
+library(ggrepel)
 ```
 
 
