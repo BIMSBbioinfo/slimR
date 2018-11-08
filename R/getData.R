@@ -290,4 +290,36 @@ getPFAM <- function(organism = 9606, pfam_version = "Pfam30.0") {
   return(pfam)
 }
 
+#' validateVariants
+#'
+#' This function is used to validate whether the missense variants are consistent
+#' with the fasta sequences of the proteins
+#'
+#' @param df A data.frame or data.table containing minimally the following
+#'   columns: 1. uniprotAccession 2. wtAA (wild-type amino acid) 3. pos (the position
+#'   of the wild-type amino acid in the protein sequence)
+#' @param fasta AAStringSet object of protein sequences, in which names of the list items
+#'   should correspond to the uniprotAccession column of the 'df' input
+#' @param nodeN Number of cores to use to parallelise the run
+#' @return A subset of the initial data.frame or data.table object such that the
+#'   given positions of amino acids match the residues in the fasta sequences
+#' @importFrom parallel makeCluster
+#' @importFrom parallel clusterExport
+#' @importFrom parallel stopCluster
+#' @export
+validateVariants <- function(df, fasta, nodeN = 8) {
+  cl <- parallel::makeCluster(10)
+  parallel::clusterExport(cl, varlist = c('fasta'))
+  mappedResidues <- pbapply::pbapply(cl = cl, X = df, MARGIN = 1, FUN = function(x) {
+    require(Biostrings)
+    uni <- x[['uniprotAccession']]
+    pos <- as.numeric(x[['pos']])
+    ifelse(pos > length(fasta[[uni]]), NA, as.character(fasta[[uni]][pos]))
+  })
+  parallel::stopCluster(cl)
+
+  df$mappedResidue <- mappedResidues
+  df$validity <- df$wtAA == df$mappedResidue
+  return(df)
+}
 
