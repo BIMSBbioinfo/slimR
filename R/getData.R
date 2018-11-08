@@ -28,7 +28,7 @@ getHumSavar <- function (outdir) {
     download.file(url = 'www.uniprot.org/docs/humsavar.txt',
                   destfile = variantFile)
   } else {
-    warning("humsavar.txt exists at the target location",variantFile,
+    warning("humsavar.txt exists at the target location: ",variantFile,
             ", a new one won't be downloaded. Remove the existing
             file and re-run the function to update the file")
   }
@@ -98,16 +98,29 @@ getClinVarData <- function(url = 'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_del
 
 #' getUniprotData
 #'
-#' Batch download different types of data from Uniprot using
-#' REST services
+#' Batch download different types of proteome-wide annotation data from Uniprot
+#' using REST services
 #'
+#' @param outDir Target download folder path
 #' @param format File format. Accepted formats are gff, fasta, txt
 #' @param organism Organism code e.g. 9606 for human
 #' @param reviewed Only download reviewed uniprot entries (default: TRUE)
+#' @param update Boolean (default: FALSE), whether to download updated
+#' annotations to the target folder
 #' @export
-getUniprotData <- function(format, reviewed = TRUE, organism = 9606, overwrite = FALSE) {
+getUniprotData <- function(outDir, format, reviewed = TRUE, organism = 9606, update = FALSE) {
   if(!format %in% c('gff', 'fasta', 'txt')) {
     stop("Error: can only download gff, fasta, or txt format files")
+  }
+
+  checkExists <- grepl(pattern = paste0('uniprot.',organism,'.*',format,'$'),
+                       x = dir(outDir))
+
+  if(sum(checkExists) > 0 & update == FALSE) {
+    warning("Destination folder already contains previously downloaded annotation data: ",
+            "\n See: ",dir(outDir)[checkExists],
+            "\n Set 'update' to TRUE to download an updated annotation\n")
+    return(dir(outDir, full.names = TRUE)[checkExists])
   }
 
   url <- 'https://www.uniprot.org/uniprot/?query='
@@ -119,13 +132,9 @@ getUniprotData <- function(format, reviewed = TRUE, organism = 9606, overwrite =
   url <- paste0(url, "organism:",organism, "&format=",format)
 
   downloadDate <- paste(unlist(strsplit(date(), ' '))[c(2,4,6)], collapse = '_')
-  outFile <- paste(c("uniprot", organism, downloadDate, format), collapse = '.')
+  outFile <- file.path(outDir,
+                       paste(c("uniprot", organism, downloadDate, format), collapse = '.'))
 
-  if(file.exists(outFile) & overwrite == FALSE) {
-    warning("Destination file already exists: ",outFile,
-         "\n Set 'overwrite' to TRUE to overwrite the existing file")
-    return(outFile)
-  }
 
   download.file(url = url, destfile = outFile)
   return(outFile)

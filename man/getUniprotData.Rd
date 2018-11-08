@@ -4,17 +4,22 @@
 \alias{getUniprotData}
 \title{getUniprotData}
 \usage{
-getUniprotData(format, reviewed = TRUE, organism = 9606,
-  overwrite = FALSE)
+getUniprotData(outDir, format, reviewed = TRUE, organism = 9606,
+  update = FALSE)
 }
 \arguments{
+\item{outDir}{Target download folder path}
+
 \item{format}{File format. Accepted formats are gff, fasta, txt}
 
 \item{reviewed}{Only download reviewed uniprot entries (default: TRUE)}
 
 \item{organism}{Organism code e.g. 9606 for human}
+
+\item{update}{Boolean (default: FALSE), whether to download updated
+annotations to the target folder}
 }
 \description{
-Batch download different types of data from Uniprot using
-REST services
+Batch download different types of proteome-wide annotation data from Uniprot
+using REST services
 }
