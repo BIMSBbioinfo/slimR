@@ -4,10 +4,14 @@
 \alias{getHumSavar}
 \title{getHumSavar}
 \usage{
-getHumSavar()
+getHumSavar(outdir)
+}
+\arguments{
+\item{outdir}{Path to the folder, where the downloaded file should be saved.}
 }
 \value{
-A Granges object containing the coordinates of mutated sites in proteins
+A Granges object containing the coordinates of mutated sites in
+  proteins
 }
 \description{
 Download and parse protein mutation data from UniProt

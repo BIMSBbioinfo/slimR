@@ -18,57 +18,54 @@ parseMutation <- function (mutations) {
 #' getHumSavar
 #'
 #' Download and parse protein mutation data from UniProt
-#' @return A Granges object containing the coordinates of mutated sites in proteins
+#' @param outdir Path to the folder, where the downloaded file should be saved.
+#' @return A Granges object containing the coordinates of mutated sites in
+#'   proteins
 #' @export
-getHumSavar <- function () {
-  variantFile <- file.path(getwd(), 'humsavar.txt')
+getHumSavar <- function (outdir) {
+  variantFile <- file.path(outdir, 'humsavar.txt')
   if (!file.exists(variantFile)) {
     download.file(url = 'www.uniprot.org/docs/humsavar.txt',
                   destfile = variantFile)
   } else {
-    warning("humsavar.txt exists at current folder",getwd(),
+    warning("humsavar.txt exists at the target location",variantFile,
             ", a new one won't be downloaded. Remove the existing
             file and re-run the function to update the file")
   }
 
-  if(file.exists(paste0(variantFile, '.RDS'))){
-    return(readRDS(paste0(variantFile, '.RDS')))
-  } else {
-    #skip first 30 lines which don't contain mutation data
-    dat <- readLines(con = variantFile)[-(1:50)]
+  #skip first 50 lines which don't contain mutation data
+  dat <- readLines(con = variantFile)[-(1:50)]
 
-    #grep the lines with relevant variant data
-    mut <- grep(pattern = "Polymorphism|Disease|Unclassified",
-                x = dat,
-                perl = TRUE,
-                value = TRUE)
-    mut <- data.frame(
-      do.call(rbind,
-              stringr::str_split(string = mut,
-                                 n = 7,
-                                 pattern = '\\s+')))
+  #grep the lines with relevant variant data
+  mut <- grep(pattern = "Polymorphism|Disease|Unclassified",
+              x = dat,
+              perl = TRUE,
+              value = TRUE)
+  mut <- data.frame(
+    do.call(rbind,
+            stringr::str_split(string = mut,
+                               n = 7,
+                               pattern = '\\s+')))
 
-    colnames(mut) <- c('geneName', 'uniprotAccession',
-                       'FTId', 'change',
-                       'variant', 'dbSNP', 'diseaseName')
+  colnames(mut) <- c('geneName', 'uniprotAccession',
+                     'FTId', 'change',
+                     'variant', 'dbSNP', 'diseaseName')
 
-    parsedMut <- parseMutation(mutations = mut$change)
+  parsedMut <- parseMutation(mutations = mut$change)
 
-    mut <- cbind(mut, parsedMut)
+  mut <- cbind(mut, parsedMut)
 
-    #some of the mutations may not have been parsed correctly (due to errors in
-    #humsavar file). So, some amino acids may have NA values after conversion.
-    #such entries are althogether deleted in the merged data frmae)
-    mut <- mut[!(is.na(mut$wtAA) | is.na(mut$mutAA) | is.na(mut$pos)),]
+  #some of the mutations may not have been parsed correctly (due to errors in
+  #humsavar file). So, some amino acids may have NA values after conversion.
+  #such entries are althogether deleted in the merged data frmae)
+  mut <- mut[!(is.na(mut$wtAA) | is.na(mut$mutAA) | is.na(mut$pos)),]
 
-    mut <- GenomicRanges::makeGRangesFromDataFrame(df = mut,
-                                                   keep.extra.columns = TRUE,
-                                                   ignore.strand = TRUE,
-                                                   seqnames.field = 'uniprotAccession',
-                                                   start.field = 'pos', end.field = 'pos')
-    saveRDS(object = mut, file = paste0(variantFile, ".RDS"))
-    return(mut)
-  }
+  mut <- GenomicRanges::makeGRangesFromDataFrame(df = mut,
+                                                 keep.extra.columns = TRUE,
+                                                 ignore.strand = TRUE,
+                                                 seqnames.field = 'uniprotAccession',
+                                                 start.field = 'pos', end.field = 'pos')
+  return(mut)
 }
 
 
