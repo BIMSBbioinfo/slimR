@@ -12,6 +12,9 @@ getHumSavar(outdir)
 \value{
 A Granges object containing the coordinates of mutated sites in
   proteins
+
+A GRanges object where seqnames are Uniprot sequence accessions and
+  ranges are the coordinates of the variants.
 }
 \description{
 Download and parse protein mutation data from UniProt

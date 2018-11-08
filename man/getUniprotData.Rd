@@ -19,6 +19,9 @@ getUniprotData(outDir, format, reviewed = TRUE, organism = 9606,
 \item{update}{Boolean (default: FALSE), whether to download updated
 annotations to the target folder}
 }
+\value{
+Path to the downloaded file
+}
 \description{
 Batch download different types of proteome-wide annotation data from Uniprot
 using REST services

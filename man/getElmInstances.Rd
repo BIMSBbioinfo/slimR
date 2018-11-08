@@ -17,6 +17,10 @@ false+positive, false+negative}
 \item{taxon}{(default: homo+sapiens) other option examples: mus+musculus,
 drosophila+melanogaster etc.}
 }
+\value{
+A GRanges object where seqnames are Uniprot accessions and
+ranges are the short linear motif locations in the proteins.
+}
 \description{
 Using REST services, download ELM instances table from elm.eu.org
 }

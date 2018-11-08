@@ -21,6 +21,10 @@ parseMutation <- function (mutations) {
 #' @param outdir Path to the folder, where the downloaded file should be saved.
 #' @return A Granges object containing the coordinates of mutated sites in
 #'   proteins
+#' @importFrom GenomicRanges makeGRangesFromDataFrame
+#' @importFrom stringr str_split
+#' @return A GRanges object where seqnames are Uniprot sequence accessions and
+#'   ranges are the coordinates of the variants.
 #' @export
 getHumSavar <- function (outdir) {
   variantFile <- file.path(outdir, 'humsavar.txt')
@@ -81,7 +85,7 @@ getHumSavar <- function (outdir) {
 #'
 #' @param overwrite default: FALSE, boolean value to decide if a fresh download
 #'   should overwrite the existing file
-#' @return Path to the downloaded and unzipped file
+#' @return Path to the downloaded file
 #' @export
 getClinVarData <- function(url = 'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz',
                            overwrite = FALSE) {
@@ -107,6 +111,7 @@ getClinVarData <- function(url = 'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_del
 #' @param reviewed Only download reviewed uniprot entries (default: TRUE)
 #' @param update Boolean (default: FALSE), whether to download updated
 #' annotations to the target folder
+#' @return Path to the downloaded file
 #' @export
 getUniprotData <- function(outDir, format, reviewed = TRUE, organism = 9606, update = FALSE) {
   if(!format %in% c('gff', 'fasta', 'txt')) {
@@ -143,6 +148,8 @@ getUniprotData <- function(outDir, format, reviewed = TRUE, organism = 9606, upd
 #' getElmClasses
 #'
 #' Scrape ELM classes table from elm.eu.org
+#'
+#' @return A list of regular expressions from the ELM database.
 #' @export
 getElmClasses <- function () {
   urlData <- RCurl::getURL(url = "http://elm.eu.org/elms")
@@ -169,7 +176,9 @@ getElmClasses <- function () {
 #'   false+positive, false+negative
 #' @param taxon (default: homo+sapiens) other option examples: mus+musculus,
 #'   drosophila+melanogaster etc.
-#'
+#' @importFrom GenomicRanges makeGRangesFromDataFrame
+#' @return A GRanges object where seqnames are Uniprot accessions and
+#' ranges are the short linear motif locations in the proteins.
 #' @export
 getElmInstances <- function (query = '*',
                              instanceLogic = 'true+positive',
@@ -209,10 +218,17 @@ getElmInstances <- function (query = '*',
 #'
 #' @param iupredPath The path to the folder containing the source code of the
 #'   IUPred tool
-#' @param fastaFile A fasta file
-#'   containing the amino acid sequences
-#' @param nodeN default: 1. Positive integer for the number of parallel cores to use
-#' for downloading and processing the files
+#' @param fastaFile A fasta file containing the amino acid sequences
+#' @param nodeN default: 1. Positive integer for the number of parallel cores to
+#'   use for downloading and processing the files
+#' @importFrom parallel clusterExport
+#' @importFrom Biostrings readAAStringSet
+#' @importFrom parallel makeCluster
+#' @importFrom parallel stopCluster
+#' @importFrom pbapply pblapply
+#' @return A list of numerical arrays, where each value in the array correspond
+#'   to the disorder score propensity of the corresponding residue in the
+#'   protein sequence.
 #' @export
 runIUPred <- function (iupredPath,
                        fastaFile,
@@ -248,7 +264,7 @@ runIUPred <- function (iupredPath,
     file.remove(tmpOut)
     return(result)
   })
-  stopCluster(cl)
+  parallel::stopCluster(cl)
   names(results) <- names(fasta)
   return(results)
 }
@@ -259,6 +275,8 @@ runIUPred <- function (iupredPath,
 #' Download pfam domain annotations of complete proteomes
 #'
 #' @param organism Organism taxonomy id (e.g. human: 9606)
+#' @importFrom data.table fread
+#' @importFrom GenomicRanges makeGRangesFromDataFrame
 #' @return A Granges object containing the coordinates PFAM domains in protein
 #'   sequences
 #' @export
@@ -306,6 +324,7 @@ getPFAM <- function(organism = 9606, pfam_version = "Pfam30.0") {
 #' @importFrom parallel makeCluster
 #' @importFrom parallel clusterExport
 #' @importFrom parallel stopCluster
+#' @importFrom pbapply pbapply
 #' @export
 validateVariants <- function(df, fasta, nodeN = 8) {
   cl <- parallel::makeCluster(10)

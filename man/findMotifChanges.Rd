@@ -22,7 +22,7 @@ Find out which SLiMs are gained or lost (no longer matching the regex
 pattern) via point amino acid substitutions in protein sequences
 }
 \examples{
-c <- findMotifChanges(sequence = paste(glutFasta),
+c <- findMotifChanges(sequence = glutFasta,
                       variants = glutMutations,
                      motifRegex = motifRegex)
 }

@@ -1,8 +1,8 @@
 Package: slimR
 Type: Package
 Title: Short Linear Motif (SLiM) Analysis in the context of human diseases
-Version: 0.99.0
-Date: 2016-01-05
+Version: 0.99.1
+Date: 2018-11-08
 Authors@R: c(person("Bora", "Uyar", email='bora.uyar@mdc-berlin.de', role=c("aut", "cre")))
 Description: slimR is a protein sequence analysis package centered around 
   short linear motifs (SLiMs) and their connections to human diseases.  
@@ -11,7 +11,7 @@ Description: slimR is a protein sequence analysis package centered around
   SLiM patterns  (regular expressions) are retrieved from the ELM database. 
   Protein sequence  features such as disease-causing mutations, polymorphisms, 
   protein domains,  and many other annotated features are retrieved from the 
-  UniProt database.  The main motivation of the package is to facilitate 
+  UniProt or ClinVar databases.  The main motivation of the package is to facilitate 
   analysis of the impact of protein sequence variations due to mutations 
   and polymorphism on the content of SLiMs. Besides functions to retrieve 
   data from public resources, there are functions to calculate disorder 
@@ -20,10 +20,14 @@ Description: slimR is a protein sequence analysis package centered around
   only for the analysis of human diseases but also studies of the evolution 
   of species via gain/loss of SLiMs in any comparative context.
 Depends: 
-    doParallel,
     GenomicRanges,
     data.table,
-    parallel
+    parallel, 
+    stringr,
+    pracma,
+    dplyr,
+    pbapply,
+    Biostrings
 License: Artistic-2.0
 LazyData: TRUE
 RoxygenNote: 6.1.0

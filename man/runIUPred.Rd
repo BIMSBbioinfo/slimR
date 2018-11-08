@@ -10,11 +10,15 @@ runIUPred(iupredPath, fastaFile, nodeN = 1)
 \item{iupredPath}{The path to the folder containing the source code of the
 IUPred tool}
 
-\item{fastaFile}{A fasta file
-containing the amino acid sequences}
+\item{fastaFile}{A fasta file containing the amino acid sequences}
 
-\item{nodeN}{default: 1. Positive integer for the number of parallel cores to use
-for downloading and processing the files}
+\item{nodeN}{default: 1. Positive integer for the number of parallel cores to
+use for downloading and processing the files}
+}
+\value{
+A list of numerical arrays, where each value in the array correspond
+  to the disorder score propensity of the corresponding residue in the
+  protein sequence.
 }
 \description{
 run IUPred tool to get disorder propensity scores of a given protein sequence

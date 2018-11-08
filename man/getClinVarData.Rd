@@ -17,7 +17,7 @@ ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz)}
 should overwrite the existing file}
 }
 \value{
-Path to the downloaded and unzipped file
+Path to the downloaded file
 }
 \description{
 This function will fetch the clinvar data from the given url and parse the

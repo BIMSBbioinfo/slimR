@@ -74,6 +74,7 @@ searchSLiMs <- function(sequence, motifRegex, from = 1, to = nchar(sequence)) {
 #' @param pattern PERL like regular expression
 #' @return data.table data.frame object
 #' @importFrom data.table data.table
+#' @importFrom pracma  refindall
 #' @export
 locateAllRegex <- function (sequence, pattern) {
   startPos <- pracma::refindall(s = sequence, pat = pattern)
@@ -132,7 +133,7 @@ mutateSequence <- function (sequence, pos, wtAA, mutAA) {
 #' @return data.table data.frame object
 #' @importFrom dplyr setdiff
 #' @examples
-#' c <- findMotifChanges(sequence = paste(glutFasta),
+#' c <- findMotifChanges(sequence = glutFasta,
 #'                       variants = glutMutations,
 #'                      motifRegex = motifRegex)
 #' @export
@@ -259,6 +260,9 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
 #'   in the sequence, wtAA is the wild-type amino acid (one letter code) in the
 #'   sequence and mutAA is the mutant amino acid (one letter code).
 #' @param nodeN Number of cores needed to run the analysis (default: 1)
+#' @importFrom parallel makeCluster
+#' @importFrom parallel clusterExport
+#' @importFrom parallel stopCluster
 #' @return List of data.frame objects. One data.frame per each uniprot accession
 #' @export
 findMotifChangesMulti <- function(sequences,
@@ -287,6 +291,6 @@ findMotifChangesMulti <- function(sequences,
     }
     return(result)
   }))
-  stopCluster(cl)
+  parallel::stopCluster(cl)
   return(motifChanges)
 }

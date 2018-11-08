@@ -6,6 +6,9 @@
 \usage{
 getElmClasses()
 }
+\value{
+A list of regular expressions from the ELM database.
+}
 \description{
 Scrape ELM classes table from elm.eu.org
 }
