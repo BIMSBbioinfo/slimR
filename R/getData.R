@@ -291,10 +291,10 @@ getPFAM <- function(organism = 9606, pfam_version = "Pfam30.0") {
   outFile <- file.path(getwd(), paste0(pfam_version, '.', organism, '.tsv.gz'))
 
   if(file.exists(outFile)) {
-    stop("PFAM annotation data already exists at:",outFile,"\n")
+    warning("PFAM annotation data already exists at: \n \t",outFile,"\n")
+  } else {
+    download.file(url = url, destfile = outFile)
   }
-
-  download.file(url = url, destfile = outFile)
 
   pfam <- data.table::fread(outFile, sep = '\t', header = F)
   colnames(pfam) <- c('seqname', 'start', 'end', 'env_start', 'env_end',
@@ -307,6 +307,24 @@ getPFAM <- function(organism = 9606, pfam_version = "Pfam30.0") {
 
   return(pfam)
 }
+
+#' getPFAM
+#'
+#' Download PFAM domain clans
+#'
+#' @importFrom RCurl getURL
+#' @importFrom XML htmlParse
+#' @importFrom XML readHTMLTable
+#' @return A data.frame object
+#' @export
+getPFAMClans <- function() {
+  urlData <- RCurl::getURL(url = "http://pfam.xfam.org/clan/browse")
+  htmlData <- XML::htmlParse(urlData)
+  tables <- XML::readHTMLTable(doc = htmlData)
+  clans <- tables$clanBrowse
+  return(clans)
+}
+
 
 #' validateVariants
 #'
