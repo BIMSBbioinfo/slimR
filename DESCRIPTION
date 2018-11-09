@@ -27,7 +27,9 @@ Depends:
     pracma,
     dplyr,
     pbapply,
-    Biostrings
+    Biostrings, 
+    RCurl,
+    XML
 License: Artistic-2.0
 LazyData: TRUE
 RoxygenNote: 6.1.0
