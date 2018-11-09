@@ -3,6 +3,7 @@
 export(findMotifChanges)
 export(findMotifChangesMulti)
 export(getClinVarData)
+export(getELMdomainInteractions)
 export(getElmClasses)
 export(getElmInstances)
 export(getHumSavar)

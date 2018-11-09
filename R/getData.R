@@ -206,6 +206,27 @@ getElmInstances <- function (query = '*',
   return(elmInstances)
 }
 
+#' getELMdomainInteractions
+#'
+#' Scrape known motif class - domain pairs from ELM
+#' http://elm.eu.org/interactiondomains
+#'
+#' @importFrom RCurl getURL
+#' @importFrom XML htmlParse
+#' @importFrom XML readHTMLTable
+#' @return A data.frame object with ELM classes versus cognate PFAM domains
+#' @export
+getELMdomainInteractions <- function () {
+  urlData <- RCurl::getURL(url = "http://elm.eu.org/interactiondomains")
+  htmlData <- XML::htmlParse(urlData)
+  tables <- XML::readHTMLTable(doc = htmlData)
+  elm2pfam <- tables[[1]]
+  colnames(elm2pfam) <- gsub(pattern = ' ',
+                             replacement = '_',
+                             x = colnames(elm2pfam))
+  return(elm2pfam[,1:3])
+}
+
 #' runIUPred
 #'
 #' run IUPred tool to get disorder propensity scores of a given protein sequence
