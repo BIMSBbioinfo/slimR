@@ -7,14 +7,6 @@
 "aaTable"
 
 
-#' GLUT1 protein fasta sequence
-#'
-#' The amino acid sequence for P11166 protein (GLUT1)
-#'
-#' @return A AAStringSet object
-#' @source Downloaded from uniprot \url{www.uniprot.org/uniprot/P11166.fasta}
-"glutFasta"
-
 #' GLUT1 disease mutations from uniprot
 #'
 #' Table of disease associated substitutions parsed from Humsavar (UniProt)
