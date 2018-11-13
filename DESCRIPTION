@@ -20,6 +20,10 @@ Description: slimR is a protein sequence analysis package centered around
   only for the analysis of human diseases but also studies of the evolution 
   of species via gain/loss of SLiMs in any comparative context.
 Depends:
+License: Artistic-2.0
+LazyData: TRUE
+RoxygenNote: 6.1.0
+Suggests: testthat,
     GenomicRanges,
     data.table,
     parallel, 
@@ -30,7 +34,3 @@ Depends:
     Biostrings, 
     RCurl,
     XML
-License: Artistic-2.0
-LazyData: TRUE
-RoxygenNote: 6.1.0
-Suggests: testthat
