@@ -19,18 +19,17 @@ Description: slimR is a protein sequence analysis package centered around
   of SLiMs due to sequence variations. The package should be useful not 
   only for the analysis of human diseases but also studies of the evolution 
   of species via gain/loss of SLiMs in any comparative context.
-Depends:
+Depends: GenomicRanges,
+    data.table,
+    dplyr,
+    pbapply,
+    RCurl,
+    XML,
+    stringr,
+    pracma
 License: Artistic-2.0
 LazyData: TRUE
 RoxygenNote: 6.1.0
-Suggests: testthat,
-    GenomicRanges,
-    data.table,
-    parallel, 
-    stringr,
-    pracma,
-    dplyr,
-    pbapply,
-    Biostrings, 
-    RCurl,
-    XML
+Suggests: testthat, 
+    Biostrings,
+    parallel
