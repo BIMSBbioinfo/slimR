@@ -2,7 +2,7 @@
 % Please edit documentation in R/getData.R
 \name{getPFAMClans}
 \alias{getPFAMClans}
-\title{getPFAM}
+\title{getPFAMClans}
 \usage{
 getPFAMClans()
 }
