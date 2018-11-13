@@ -4,7 +4,7 @@
 \name{glutIUPred}
 \alias{glutIUPred}
 \title{GLUT1 disorder score predictions by IUPred}
-\format{An object of class \code{data.frame} with 492 rows and 3 columns.}
+\format{An object of class \code{list} of length 1.}
 \usage{
 glutIUPred
 }

@@ -4,7 +4,7 @@
 \name{glutMutations}
 \alias{glutMutations}
 \title{GLUT1 disease mutations from uniprot}
-\format{An object of class \code{data.frame} with 43 rows and 4 columns.}
+\format{An object of class \code{data.frame} with 48 rows and 9 columns.}
 \source{
 GLUT1 protein \url{www.uniprot.org/uniprot/P11166}
 and humsavar \url{www.uniprot.org/docs/humsavar.txt}
