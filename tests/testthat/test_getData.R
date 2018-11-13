@@ -39,4 +39,22 @@ test_that("get uniprot data - gff",
 test_that("get uniprot data format",
           expect_error(getUniprotData(format = 'foo')))
 
+elm_classes <- getElmClasses()
+elm2pfam <- getELMdomainInteractions()
+
+test_that("get ELM data",
+          expect_is(elm_classes, 'list'),
+          expect_equal(elm_classes$LIG_FHA_1, "..(T)..[ILV]."),
+          expect_is(elm2pfam, 'data.frame'),
+          expect_equal(colnames(elm2pfam), c('ELM_identifier', 'Interaction_Domain_Id',
+                                             'Interaction_Domain_Name')))
+
+pfam <- getPFAM(organism = 9606, pfam_version = 'Pfam30.0')
+pfamClans <- droplevels(getPFAMClans())
+test_that("get PFAM data",
+          expect_is(pfam, 'GRanges'),
+          expect_equal(colnames(mcols(pfam)[1:2]), c('env_start', 'env_end')),
+          expect_equal(as.vector(pfamClans[pfamClans$ID == 'TRAF',]$Accession), 'CL0389'))
+
+
 
