@@ -1,7 +1,8 @@
 context("Motif analysis")
 library(slimR)
 
-data("glutFasta")
+glutFastaFile <- system.file("extdata", "glut.fasta", package = 'slimR')
+glutFasta <- Biostrings::readAAStringSet(glutFastaFile)
 data("glutMutations")
 
 #get disorder scores for each variant position
