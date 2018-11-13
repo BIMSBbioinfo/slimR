@@ -23,6 +23,7 @@ parseMutation <- function (mutations) {
 #'   proteins
 #' @importFrom GenomicRanges makeGRangesFromDataFrame
 #' @importFrom stringr str_split
+#' @importFrom utils download.file
 #' @return A GRanges object where seqnames are Uniprot sequence accessions and
 #'   ranges are the coordinates of the variants.
 #' @export
@@ -86,8 +87,11 @@ getHumSavar <- function (outdir) {
 #' @param overwrite default: FALSE, boolean value to decide if a fresh download
 #'   should overwrite the existing file
 #' @return Path to the downloaded file
+#' @importFrom utils download.file
 #' @export
-getClinVarData <- function(url = 'ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz',
+getClinVarData <- function(url = paste0('ftp://ftp.ncbi.nlm.nih.gov/',
+                                        'pub/clinvar/tab_delimited/',
+                                        'variant_summary.txt.gz'),
                            overwrite = FALSE) {
   destFile <- basename(url)
   if(overwrite == TRUE) {
@@ -177,6 +181,8 @@ getElmClasses <- function () {
 #' @param taxon (default: homo+sapiens) other option examples: mus+musculus,
 #'   drosophila+melanogaster etc.
 #' @importFrom GenomicRanges makeGRangesFromDataFrame
+#' @importFrom utils download.file
+#' @importFrom utils read.table
 #' @return A GRanges object where seqnames are Uniprot accessions and
 #' ranges are the short linear motif locations in the proteins.
 #' @export
@@ -298,6 +304,7 @@ runIUPred <- function (iupredPath,
 #' @param organism Organism taxonomy id (e.g. human: 9606)
 #' @importFrom data.table fread
 #' @importFrom GenomicRanges makeGRangesFromDataFrame
+#' @importFrom utils download.file
 #' @return A Granges object containing the coordinates PFAM domains in protein
 #'   sequences
 #' @export
@@ -329,7 +336,7 @@ getPFAM <- function(organism = 9606, pfam_version = "Pfam30.0") {
   return(pfam)
 }
 
-#' getPFAM
+#' getPFAMClans
 #'
 #' Download PFAM domain clans
 #'
