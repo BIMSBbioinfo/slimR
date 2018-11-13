@@ -19,7 +19,24 @@ test_that("clinvar_variants",
           expect_equal(ncol(cv_head), 31),
           expect_equal(colnames(cv_head)[1], "#AlleleID"))
 
+#download Tobacco Rattle Virus proteome (it has only 6 genes)
+#https://www.uniprot.org/proteomes/UP000001669
+up <- getUniprotData(outDir = getwd(), format = 'fasta',
+                     reviewed = TRUE, organism = 652939)
+up_fasta <- Biostrings::readAAStringSet(up)
 
+test_that("get uniprot data - fasta",
+          expect_equal(length(up_fasta), 6),
+          expect_is(up_fasta, "AAStringSet"),
+          expect_equal(grep('MVP_', names(up_fasta)), 1)
+          )
 
+up_gff_file <- getUniprotData(outDir = getwd(), format = 'gff',
+               reviewed = TRUE, organism = 652939)
+test_that("get uniprot data - gff",
+          expect_equal(file.exists(up_gff_file), TRUE))
+
+test_that("get uniprot data format",
+          expect_error(getUniprotData(format = 'foo')))
 
 
