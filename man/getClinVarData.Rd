@@ -4,8 +4,8 @@
 \alias{getClinVarData}
 \title{getClinVarData}
 \usage{
-
-  getClinVarData(url = "ftp://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz",
+getClinVarData(url = paste0("ftp://ftp.ncbi.nlm.nih.gov/",
+  "pub/clinvar/tab_delimited/", "variant_summary.txt.gz"),
   overwrite = FALSE)
 }
 \arguments{
