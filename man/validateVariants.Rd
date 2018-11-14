@@ -4,7 +4,7 @@
 \alias{validateVariants}
 \title{validateVariants}
 \usage{
-validateVariants(df, fasta, nodeN = 8)
+validateVariants(df, fasta, nodeN = 1)
 }
 \arguments{
 \item{df}{A data.frame or data.table containing minimally the following

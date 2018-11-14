@@ -379,8 +379,8 @@ getPFAMClans <- function() {
 #' @importFrom parallel stopCluster
 #' @importFrom pbapply pbapply
 #' @export
-validateVariants <- function(df, fasta, nodeN = 8) {
-  cl <- parallel::makeCluster(10)
+validateVariants <- function(df, fasta, nodeN = 1) {
+  cl <- parallel::makeCluster(nodeN)
   parallel::clusterExport(cl, varlist = c('df', 'fasta'),  envir = environment())
   mappedResidues <- pbapply::pbapply(cl = cl, X = df, MARGIN = 1, FUN = function(x) {
     requireNamespace('Biostrings')
