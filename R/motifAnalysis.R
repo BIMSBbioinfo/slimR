@@ -12,6 +12,12 @@
 #' @return A vector of motif hits with the syntax: <MotifIdentifier>:<start
 #'   position in sequence>:<end position in sequence> e.g.:
 #'   TRG_ENDOCYTIC_2:333:340
+#' @examples
+#'
+#' glutFastaFile <- system.file("extdata", "glut.fasta", package = 'slimR')
+#' glutFasta <- Biostrings::readAAStringSet(glutFastaFile)
+#'
+#' slims <- searchSLiMs(paste(glutFasta), slimR::motifRegex)
 #' @export
 searchSLiMs <- function(sequence, motifRegex, from = 1, to = nchar(sequence)) {
 
@@ -97,6 +103,11 @@ locateAllRegex <- function (sequence, pattern) {
 #' @return A character string where wtAA is replaced with mutAA if the
 #'   amino-acid at the given position of the given sequence actually has the
 #'   same amino acid.
+#' @examples
+#'
+#' s <- 'AAAAA'
+#' mutateSequence(s, 3, 'A', 'R')
+#'
 #' @export
 mutateSequence <- function (sequence, pos, wtAA, mutAA) {
   if ( pos < 1 | pos > nchar(sequence)) {
@@ -131,6 +142,15 @@ mutateSequence <- function (sequence, pos, wtAA, mutAA) {
 #' @return data.table data.frame object
 #' @importFrom dplyr setdiff
 #' @import data.table
+#' @examples
+#'
+#' glutFastaFile <- system.file("extdata", "glut.fasta", package = 'slimR')
+#' glutFasta <- Biostrings::readAAStringSet(glutFastaFile)
+#'
+#' variants <- data.frame('uniprotAccession' = 'P11166', 'pos' = 485, 'wtAA' = 'P', 'mutAA' = 'L')
+#'
+#' findMotifChanges(paste(glutFasta), variants, slimR::motifRegex)
+#'
 #' @export
 findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex) {
 
