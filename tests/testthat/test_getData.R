@@ -30,7 +30,7 @@ up_fasta <- Biostrings::readAAStringSet(up)
 test_that("get uniprot data - fasta", {
           expect_equal(length(up_fasta), 6)
           expect_is(up_fasta, "AAStringSet")
-          expect_equal(grep('MVP_', names(up_fasta)), 1)
+          expect_equal(sum(grepl('MVP_', names(up_fasta))), 1)
           })
 
 up_gff_file <- getUniprotData(outDir = getwd(), format = 'gff',
@@ -58,7 +58,7 @@ pfam <- getPFAM(organism = 9606, pfam_version = 'Pfam30.0')
 pfamClans <- droplevels(getPFAMClans())
 test_that("get PFAM data", {
           expect_is(pfam, 'GRanges')
-          expect_equal(colnames(mcols(pfam)[1:2]), c('env_start', 'env_end'))
+          expect_equal(colnames(S4Vectors::mcols(pfam)[1:2]), c('env_start', 'env_end'))
           expect_equal(as.vector(pfamClans[pfamClans$ID == 'TRAF',]$Accession), 'CL0389')
   })
 
