@@ -9,10 +9,6 @@
 #' @param from integer value (default: 1) where to start the search for patterns
 #' @param to integer value (default: length of input sequence) where to end the
 #'   search
-#' @examples
-#' data("glutFasta")
-#' motifRegex <- list('TRG_ENDOCYTIC_2' = 'Y..[LMVIF]')
-#' searchSLiMs(paste(glutFasta), motifRegex)
 #' @return A vector of motif hits with the syntax: <MotifIdentifier>:<start
 #'   position in sequence>:<end position in sequence> e.g.:
 #'   TRG_ENDOCYTIC_2:333:340
@@ -130,13 +126,11 @@ mutateSequence <- function (sequence, pos, wtAA, mutAA) {
 #'   1.uniprotAccession, 2.wtAA, 3.mutAA, 4.pos where pos is the mutation position in
 #'   the sequence, wtAA is the wild-type amino acid (one letter code) in the
 #'   sequence and mutAA is the mutant amino acid (one letter code).
+#' @param motifRegex List of slim regular expressions. By default, the built-in
+#'   slimR::motifRegex from the ELM database is used.
 #' @return data.table data.frame object
 #' @importFrom dplyr setdiff
 #' @import data.table
-#' @examples
-#' c <- findMotifChanges(sequence = glutFasta,
-#'                       variants = glutMutations,
-#'                      motifRegex = motifRegex)
 #' @export
 findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex) {
 
@@ -172,7 +166,7 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
     mutMotifs <- slimR::searchSLiMs(sequence = mutSeq,
                                     motifRegex = motifRegex,
                                     from = ifelse(pos - 51 > 0, pos - 51, 1),
-                                    to = ifelse(pos + 50 <= width(sequence), pos + 50, width(sequence)))
+                                    to = ifelse(pos + 50 <= nchar(sequence), pos + 50, nchar(sequence)))
     #filter mutMotifs for those that overlap variant position
 
     if(!is.null(mutMotifs)) {

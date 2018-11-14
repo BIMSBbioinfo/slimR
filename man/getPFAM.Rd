@@ -8,6 +8,9 @@ getPFAM(organism = 9606, pfam_version = "Pfam30.0")
 }
 \arguments{
 \item{organism}{Organism taxonomy id (e.g. human: 9606)}
+
+\item{pfam_version}{Version of PFAM release to use: default Pfam30.0. Check
+ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/ for available versions.}
 }
 \value{
 A Granges object containing the coordinates PFAM domains in protein

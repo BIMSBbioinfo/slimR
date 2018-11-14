@@ -6,7 +6,13 @@
 \usage{
 parseMutation(mutations)
 }
+\arguments{
+\item{mutations}{Vector of mutations}
+}
+\value{
+A data.frame object where columns are wtAA, mutAA, and pos
+}
 \description{
-Given a vector of mutation substitutions (e.g. "p.His160Arg")
--> split "p.His160Arg" into "H 160 R"
+Given a vector of mutation substitutions
+(e.g. "p.His160Arg") -> split "p.His160Arg" into "H 160 R"
 }

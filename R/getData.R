@@ -1,7 +1,9 @@
 #' parseMutation
 #'
-#' Given a vector of mutation substitutions (e.g. "p.His160Arg")
-#' -> split "p.His160Arg" into "H 160 R"
+#' Given a vector of mutation substitutions
+#' (e.g. "p.His160Arg") -> split "p.His160Arg" into "H 160 R"
+#' @param mutations Vector of mutations
+#' @return A data.frame object where columns are wtAA, mutAA, and pos
 #' @export
 parseMutation <- function (mutations) {
   mutations <- gsub(pattern = '^p.', replacement = '', x = mutations)
@@ -302,6 +304,8 @@ runIUPred <- function (iupredPath,
 #' Download pfam domain annotations of complete proteomes
 #'
 #' @param organism Organism taxonomy id (e.g. human: 9606)
+#' @param pfam_version Version of PFAM release to use: default Pfam30.0. Check
+#'   ftp://ftp.ebi.ac.uk/pub/databases/Pfam/releases/ for available versions.
 #' @importFrom data.table fread
 #' @importFrom GenomicRanges makeGRangesFromDataFrame
 #' @importFrom utils download.file

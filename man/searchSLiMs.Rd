@@ -26,8 +26,3 @@ A vector of motif hits with the syntax: <MotifIdentifier>:<start
 Using regular expressions of SLiMs, find all matches of given SLiM patterns
 in a given sequence
 }
-\examples{
-data("glutFasta")
-motifRegex <- list('TRG_ENDOCYTIC_2' = 'Y..[LMVIF]')
-searchSLiMs(paste(glutFasta), motifRegex)
-}

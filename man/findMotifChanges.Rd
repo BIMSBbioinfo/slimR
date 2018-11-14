@@ -13,6 +13,9 @@ findMotifChanges(sequence, variants, motifRegex = slimR::motifRegex)
 1.uniprotAccession, 2.wtAA, 3.mutAA, 4.pos where pos is the mutation position in
 the sequence, wtAA is the wild-type amino acid (one letter code) in the
 sequence and mutAA is the mutant amino acid (one letter code).}
+
+\item{motifRegex}{List of slim regular expressions. By default, the built-in
+slimR::motifRegex from the ELM database is used.}
 }
 \value{
 data.table data.frame object
@@ -20,9 +23,4 @@ data.table data.frame object
 \description{
 Find out which SLiMs are gained or lost (no longer matching the regex
 pattern) via point amino acid substitutions in protein sequences
-}
-\examples{
-c <- findMotifChanges(sequence = glutFasta,
-                      variants = glutMutations,
-                     motifRegex = motifRegex)
 }
