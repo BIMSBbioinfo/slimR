@@ -169,7 +169,10 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
                                     wtAA = wtAA,
                                     mutAA = mutAA)
 
-    mutMotifs <- slimR::searchSLiMs(sequence = mutSeq, motifRegex = motifRegex, from = pos - 51, to = pos + 50)
+    mutMotifs <- slimR::searchSLiMs(sequence = mutSeq,
+                                    motifRegex = motifRegex,
+                                    from = ifelse(pos - 51 > 0, pos - 51, 1),
+                                    to = ifelse(pos + 50 <= width(sequence), pos + 50, width(sequence)))
     #filter mutMotifs for those that overlap variant position
 
     if(!is.null(mutMotifs)) {
@@ -245,8 +248,6 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
     return(unChanged)
   }
   }
-
-
 
 #' findMotifChangesMulti
 #'
