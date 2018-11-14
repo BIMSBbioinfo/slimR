@@ -267,7 +267,7 @@ runIUPred <- function (iupredPath,
   cl <- parallel::makeCluster(nodeN)
   parallel::clusterExport(cl = cl, varlist = c('fasta', 'iupredPath'), envir = environment())
   results <- pbapply::pblapply(cl = cl, X = 1:length(fasta), FUN = function(i) {
-    require(Biostrings)
+    requireNamespace('Biostrings')
     sequence <- fasta[i]
     #write sequence to a temp file
     id <- paste0(c('tmp_', sample(1:9, 10, replace = T)),  collapse = '')
@@ -381,9 +381,9 @@ getPFAMClans <- function() {
 #' @export
 validateVariants <- function(df, fasta, nodeN = 8) {
   cl <- parallel::makeCluster(10)
-  parallel::clusterExport(cl, varlist = c('fasta'))
+  parallel::clusterExport(cl, varlist = c('df', 'fasta'),  envir = environment())
   mappedResidues <- pbapply::pbapply(cl = cl, X = df, MARGIN = 1, FUN = function(x) {
-    require(Biostrings)
+    requireNamespace('Biostrings')
     uni <- x[['uniprotAccession']]
     pos <- as.numeric(x[['pos']])
     ifelse(pos > length(fasta[[uni]]), NA, as.character(fasta[[uni]][pos]))

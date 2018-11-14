@@ -277,7 +277,7 @@ findMotifChangesMulti <- function(sequences,
   parallel::clusterExport(cl = cl, varlist = c('sequences', 'variants', 'motifRegex'),
                           envir=environment())
   motifChanges <- do.call(rbind, pbapply::pblapply(cl = cl, X = 1:length(sequences), FUN = function(i) {
-    require(Biostrings)
+    requireNamespace('Biostrings')
     uni <- names(sequences)[i]
     if (uni %in% variants$uniprotAccession) {
       result <- slimR::findMotifChanges(sequence = paste(sequences[i]),
