@@ -99,8 +99,10 @@ getHumSavar <- function (outdir) {
 #' @importFrom utils download.file
 #' @examples
 #' \dontrun{
+#' #download
 #' filePath <- getClinVarData()
-#' cv <- data.table::fread(filePath)
+#' #read first 100 lines
+#' cv_head <- data.table::fread(text = readLines(filePath, n = 100))
 #' }
 #' @export
 getClinVarData <- function(url = paste0('ftp://ftp.ncbi.nlm.nih.gov/',
@@ -130,6 +132,18 @@ getClinVarData <- function(url = paste0('ftp://ftp.ncbi.nlm.nih.gov/',
 #' @param update Boolean (default: FALSE), whether to download updated
 #' annotations to the target folder
 #' @return Path to the downloaded file
+#' @examples
+#' #download Tobacco Rattle Virus proteome (it has only 6 genes)
+#' #https://www.uniprot.org/proteomes/UP000001669
+#' up <- getUniprotData(outDir = getwd(), format = 'fasta',
+#'                     reviewed = TRUE, organism = 652939)
+#' up_fasta <- Biostrings::readAAStringSet(up)
+#' \dontrun{
+#' #download gff annotation for human reviewed proteome
+#' gffFile <- getUniprotData(outDir = getwd(), format = 'fasta',
+#'                     reviewed = TRUE, organism = 9606)
+#' gff <- rtracklayer::import.gff(gffFile)
+#' }
 #' @export
 getUniprotData <- function(outDir, format, reviewed = TRUE, organism = 9606, update = FALSE) {
   if(!format %in% c('gff', 'fasta', 'txt')) {
@@ -168,6 +182,8 @@ getUniprotData <- function(outDir, format, reviewed = TRUE, organism = 9606, upd
 #' Scrape ELM classes table from elm.eu.org
 #'
 #' @return A list of regular expressions from the ELM database.
+#' @examples
+#' elm <- getElmClasses()
 #' @export
 getElmClasses <- function () {
   urlData <- RCurl::getURL(url = "http://elm.eu.org/elms")
@@ -199,6 +215,8 @@ getElmClasses <- function () {
 #' @importFrom utils read.table
 #' @return A GRanges object where seqnames are Uniprot accessions and
 #' ranges are the short linear motif locations in the proteins.
+#' @examples
+#' elmInst <- getElmInstances('*', 'true+positive', 'homo+sapiens')
 #' @export
 getElmInstances <- function (query = '*',
                              instanceLogic = 'true+positive',
@@ -235,6 +253,10 @@ getElmInstances <- function (query = '*',
 #' @importFrom XML htmlParse
 #' @importFrom XML readHTMLTable
 #' @return A data.frame object with ELM classes versus cognate PFAM domains
+#' @examples
+#'
+#' elm2pfam <- getELMdomainInteractions()
+#'
 #' @export
 getELMdomainInteractions <- function () {
   urlData <- RCurl::getURL(url = "http://elm.eu.org/interactiondomains")
@@ -270,6 +292,14 @@ getELMdomainInteractions <- function () {
 #' @return A list of numerical arrays, where each value in the array correspond
 #'   to the disorder score propensity of the corresponding residue in the
 #'   protein sequence.
+#' @examples
+#' \dontrun{
+#' glutFastaFile <- system.file("extdata", "glut.fasta", package = 'slimR')
+#' #get disorder scores
+#' iupred <- runIUPred('/home/buyar/tools/iupred/', glutFastaFile, 1)
+#' #plot disorder score profile
+#' plot(iupred[[1]], col = ifelse(iupred[[1]] > 0.4, 'red', 'black'), main = names(iupred)[1])
+#' }
 #' @export
 runIUPred <- function (iupredPath,
                        fastaFile,
@@ -323,6 +353,9 @@ runIUPred <- function (iupredPath,
 #' @importFrom utils download.file
 #' @return A Granges object containing the coordinates PFAM domains in protein
 #'   sequences
+#' \dontrun{
+#' pfam <- getPFAM(organism = 9606, pfam_version = 'Pfam30.0')
+#' }
 #' @export
 getPFAM <- function(organism = 9606, pfam_version = "Pfam30.0") {
 
@@ -360,6 +393,10 @@ getPFAM <- function(organism = 9606, pfam_version = "Pfam30.0") {
 #' @importFrom XML htmlParse
 #' @importFrom XML readHTMLTable
 #' @return A data.frame object
+#' @examples
+#' \dontrun{
+#' clans <- getPFAMClans()
+#' }
 #' @export
 getPFAMClans <- function() {
   urlData <- RCurl::getURL(url = "http://pfam.xfam.org/clan/browse")
@@ -390,6 +427,11 @@ getPFAMClans <- function() {
 #' @importFrom parallel clusterExport
 #' @importFrom parallel stopCluster
 #' @importFrom pbapply pbapply
+#' @examples
+#' glutFastaFile <- system.file("extdata", "glut.fasta", package = 'slimR')
+#' glutFasta <- Biostrings::readAAStringSet(glutFastaFile)
+#' data("glutMutations")
+#' val <- validateVariants(df = glutMutations[1:10,], fasta = glutFasta, nodeN = 1)
 #' @export
 validateVariants <- function(df, fasta, nodeN = 1) {
   cl <- parallel::makeCluster(nodeN)
