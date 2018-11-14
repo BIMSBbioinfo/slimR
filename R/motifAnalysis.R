@@ -176,14 +176,14 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
     #filter mutMotifs for those that overlap variant position
 
     if(!is.null(mutMotifs)) {
-      mutMotifs <- mutMotifs[pos >= start & pos <= end]
+      mutMotifs <- mutMotifs[pos >= mutMotifs$start & pos <= mutMotifs$end,]
       mutMotifs$ID <- apply(mutMotifs, 1,
                             function(x) gsub(' ', '', paste0(c(x['SLiM'], x['start'], x['end']), collapse = ':')))
     }
 
     #filter wtMotifs for those that overlap variant position
     if(!is.null(wtMotifsAll)) {
-      wtMotifs <- wtMotifsAll[pos >= start & pos <= end]
+      wtMotifs <- wtMotifsAll[pos >= wtMotifsAll$start & pos <= wtMotifsAll$end,]
     }
 
     gained <- data.table()
@@ -265,6 +265,8 @@ findMotifChanges <- function(sequence, variants, motifRegex = slimR::motifRegex)
 #' @importFrom parallel makeCluster
 #' @importFrom parallel clusterExport
 #' @importFrom parallel stopCluster
+#' @importFrom pbapply pblapply
+#' @import data.table
 #' @return List of data.frame objects. One data.frame per each uniprot accession
 #' @export
 findMotifChangesMulti <- function(sequences,
