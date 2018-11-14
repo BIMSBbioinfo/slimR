@@ -17,8 +17,11 @@ should correspond to the uniprotAccession column of the 'df' input}
 \item{nodeN}{Number of cores to use to parallelise the run}
 }
 \value{
-A subset of the initial data.frame or data.table object such that the
-  given positions of amino acids match the residues in the fasta sequences
+A data.frame consisting of the input data.frame and two additional columns
+for
+1. mappedResidue (the actual residue at the variant position)
+2. validity (boolean TRUE/FALSE) showing if the mapped residue matches the
+wild-type residue in the corresponding variant.
 }
 \description{
 This function is used to validate whether the missense variants are consistent
