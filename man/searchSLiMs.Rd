@@ -26,3 +26,10 @@ A vector of motif hits with the syntax: <MotifIdentifier>:<start
 Using regular expressions of SLiMs, find all matches of given SLiM patterns
 in a given sequence
 }
+\examples{
+
+glutFastaFile <- system.file("extdata", "glut.fasta", package = 'slimR')
+glutFasta <- Biostrings::readAAStringSet(glutFastaFile)
+
+slims <- searchSLiMs(paste(glutFasta), slimR::motifRegex)
+}

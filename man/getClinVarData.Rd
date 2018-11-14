@@ -23,3 +23,11 @@ Path to the downloaded file
 This function will fetch the clinvar data from the given url and parse the
 contents of the downloaded file.
 }
+\examples{
+\dontrun{
+#download
+filePath <- getClinVarData()
+#read first 100 lines
+cv_head <- data.table::fread(text = readLines(filePath, n = 100))
+}
+}

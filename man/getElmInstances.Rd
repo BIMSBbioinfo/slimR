@@ -24,3 +24,6 @@ ranges are the short linear motif locations in the proteins.
 \description{
 Using REST services, download ELM instances table from elm.eu.org
 }
+\examples{
+elmInst <- getElmInstances('*', 'true+positive', 'homo+sapiens')
+}

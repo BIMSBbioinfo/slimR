@@ -19,3 +19,8 @@ A GRanges object where seqnames are Uniprot sequence accessions and
 \description{
 Download and parse protein mutation data from UniProt
 }
+\examples{
+\dontrun{
+hs <- getHumSavar(getwd())
+}
+}

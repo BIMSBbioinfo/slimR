@@ -27,3 +27,9 @@ wild-type residue in the corresponding variant.
 This function is used to validate whether the missense variants are consistent
 with the fasta sequences of the proteins
 }
+\examples{
+glutFastaFile <- system.file("extdata", "glut.fasta", package = 'slimR')
+glutFasta <- Biostrings::readAAStringSet(glutFastaFile)
+data("glutMutations")
+val <- validateVariants(df = glutMutations[1:10,], fasta = glutFasta, nodeN = 1)
+}

@@ -30,3 +30,12 @@ per-base iupred disorder scores. IUPred source code can be dowloaded from
 here: http://iupred.enzim.hu/Downloads.php After unpacking the source code,
 cd to the src directory. Compile the code with "cc iupred.c -o iupred"
 }
+\examples{
+\dontrun{
+glutFastaFile <- system.file("extdata", "glut.fasta", package = 'slimR')
+#get disorder scores
+iupred <- runIUPred('/home/buyar/tools/iupred/', glutFastaFile, 1)
+#plot disorder score profile
+plot(iupred[[1]], col = ifelse(iupred[[1]] > 0.4, 'red', 'black'), main = names(iupred)[1])
+}
+}

@@ -12,3 +12,8 @@ A data.frame object
 \description{
 Download PFAM domain clans
 }
+\examples{
+\dontrun{
+clans <- getPFAMClans()
+}
+}

@@ -16,3 +16,7 @@ A data.frame object where columns are wtAA, mutAA, and pos
 Given a vector of mutation substitutions
 (e.g. "p.His160Arg") -> split "p.His160Arg" into "H 160 R"
 }
+\examples{
+mut <- c('p.His160Arg', 'p.Pro12Leu', 'p.Pro14Ter')
+mut.df <- parseMutation(mut)
+}

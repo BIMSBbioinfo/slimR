@@ -19,3 +19,8 @@ A Granges object containing the coordinates PFAM domains in protein
 \description{
 Download pfam domain annotations of complete proteomes
 }
+\examples{
+\dontrun{
+pfam <- getPFAM(organism = 9606, pfam_version = 'Pfam30.0')
+}
+}

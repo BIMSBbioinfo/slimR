@@ -353,6 +353,7 @@ runIUPred <- function (iupredPath,
 #' @importFrom utils download.file
 #' @return A Granges object containing the coordinates PFAM domains in protein
 #'   sequences
+#' @examples
 #' \dontrun{
 #' pfam <- getPFAM(organism = 9606, pfam_version = 'Pfam30.0')
 #' }

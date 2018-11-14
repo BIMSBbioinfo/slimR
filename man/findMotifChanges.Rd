@@ -24,3 +24,13 @@ data.table data.frame object
 Find out which SLiMs are gained or lost (no longer matching the regex
 pattern) via point amino acid substitutions in protein sequences
 }
+\examples{
+
+glutFastaFile <- system.file("extdata", "glut.fasta", package = 'slimR')
+glutFasta <- Biostrings::readAAStringSet(glutFastaFile)
+
+variants <- data.frame('uniprotAccession' = 'P11166', 'pos' = 485, 'wtAA' = 'P', 'mutAA' = 'L')
+
+findMotifChanges(paste(glutFasta), variants, slimR::motifRegex)
+
+}

@@ -26,3 +26,16 @@ Path to the downloaded file
 Batch download different types of proteome-wide annotation data from Uniprot
 using REST services
 }
+\examples{
+#download Tobacco Rattle Virus proteome (it has only 6 genes)
+#https://www.uniprot.org/proteomes/UP000001669
+up <- getUniprotData(outDir = getwd(), format = 'fasta',
+                    reviewed = TRUE, organism = 652939)
+up_fasta <- Biostrings::readAAStringSet(up)
+\dontrun{
+#download gff annotation for human reviewed proteome
+gffFile <- getUniprotData(outDir = getwd(), format = 'fasta',
+                    reviewed = TRUE, organism = 9606)
+gff <- rtracklayer::import.gff(gffFile)
+}
+}

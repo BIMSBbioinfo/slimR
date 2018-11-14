@@ -13,3 +13,8 @@ A data.frame object with ELM classes versus cognate PFAM domains
 Scrape known motif class - domain pairs from ELM
 http://elm.eu.org/interactiondomains
 }
+\examples{
+
+elm2pfam <- getELMdomainInteractions()
+
+}
