@@ -4,6 +4,9 @@
 #' (e.g. "p.His160Arg") -> split "p.His160Arg" into "H 160 R"
 #' @param mutations Vector of mutations
 #' @return A data.frame object where columns are wtAA, mutAA, and pos
+#' @examples
+#' mut <- c('p.His160Arg', 'p.Pro12Leu', 'p.Pro14Ter')
+#' mut.df <- parseMutation(mut)
 #' @export
 parseMutation <- function (mutations) {
   mutations <- gsub(pattern = '^p.', replacement = '', x = mutations)
