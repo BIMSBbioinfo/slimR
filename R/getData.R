@@ -31,6 +31,10 @@ parseMutation <- function (mutations) {
 #' @importFrom utils download.file
 #' @return A GRanges object where seqnames are Uniprot sequence accessions and
 #'   ranges are the coordinates of the variants.
+#' @examples
+#' \dontrun{
+#' hs <- getHumSavar(getwd())
+#' }
 #' @export
 getHumSavar <- function (outdir) {
   variantFile <- file.path(outdir, 'humsavar.txt')
@@ -93,6 +97,11 @@ getHumSavar <- function (outdir) {
 #'   should overwrite the existing file
 #' @return Path to the downloaded file
 #' @importFrom utils download.file
+#' @examples
+#' \dontrun{
+#' filePath <- getClinVarData()
+#' cv <- data.table::fread(filePath)
+#' }
 #' @export
 getClinVarData <- function(url = paste0('ftp://ftp.ncbi.nlm.nih.gov/',
                                         'pub/clinvar/tab_delimited/',
