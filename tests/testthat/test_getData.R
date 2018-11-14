@@ -21,6 +21,20 @@ test_that("clinvar_variants", {
           expect_equal(colnames(cv_head)[1], "#AlleleID")
   })
 
+#test validateVariants functions
+glutFastaFile <- system.file("extdata", "glut.fasta", package = 'slimR')
+glutFasta <- Biostrings::readAAStringSet(glutFastaFile)
+data("glutMutations")
+N <- 10
+val <- validateVariants(df = glutMutations[1:N,], fasta = glutFasta, nodeN = 1)
+test_that("validate_variants", {
+  expect_equal(nrow(val), N)
+  expect_equal(ncol(val), ncol(glutMutations) + 2)
+  expect_equal(val$dbSNP, glutMutations[1:N,]$dbSNP)
+})
+
+
+
 #download Tobacco Rattle Virus proteome (it has only 6 genes)
 #https://www.uniprot.org/proteomes/UP000001669
 up <- getUniprotData(outDir = getwd(), format = 'fasta',
