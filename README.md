@@ -17,10 +17,17 @@ species via gain/loss of SLiMs in any comparative context.
 
 # Installation
 
+## from github
 The package can be installed via github using R library `devtools`. 
 
 > install.packages('devtools')
+
 > devtools::install_github('BIMSBbioinfo/slimR')
+
+## using Conda
+
+The following command installs the latest version of the R package from Anaconda. 
+> conda install -c bora.uyar r-slimr
 
 ## External dependency 
 Currently, the package depends on IUPred tool for sequence disorder score prediction.
