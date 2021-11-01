@@ -48,10 +48,13 @@ getHumSavar <- function (outdir) {
   }
 
   #skip first 50 lines which don't contain mutation data
-  dat <- readLines(con = variantFile)[-(1:50)]
+  dat <- readLines(con = variantFile)[-(1:44)]
 
   #grep the lines with relevant variant data
-  mut <- grep(pattern = "Polymorphism|Disease|Unclassified",
+  # LB/B: likely benign/benign;
+  # LP/P: likely pathogenic/pathogenic;
+  # US: unknown significance
+  mut <- grep(pattern = "LB/B|LP/P|US",
               x = dat,
               perl = TRUE,
               value = TRUE)
